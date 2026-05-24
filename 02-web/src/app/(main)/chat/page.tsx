@@ -62,7 +62,7 @@ function AgentCard({
   index: number
   convCount: number
   onClick: () => void
-  onTogglePin: (e: React.MouseEvent) => void
+  onTogglePin: (e: React.MouseEvent | React.KeyboardEvent) => void
 }) {
   const theme = agent.color
     ? (DESK_THEMES_MAP[agent.color] ?? DESK_THEMES[index % DESK_THEMES.length])
@@ -88,18 +88,21 @@ function AgentCard({
           {agent.avatar || "🤖"}
         </span>
 
-        {/* Pin toggle button — appears on hover */}
-        <button
+        {/* Pin toggle — appears on hover */}
+        <div
+          role="button"
+          tabIndex={0}
           onClick={onTogglePin}
+          onKeyDown={(e) => e.key === "Enter" && onTogglePin(e as unknown as React.MouseEvent)}
           className={cn(
-            "absolute top-2 right-2 z-20 p-1 rounded-full transition-all",
+            "absolute top-2 right-2 z-20 p-1 rounded-full transition-all cursor-pointer",
             "bg-black/10 dark:bg-white/10 hover:bg-black/25 dark:hover:bg-white/25",
             agent.pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           )}
           title={agent.pinned ? "取消釘選" : "釘選到頂部"}
         >
           <span className="text-sm leading-none">{agent.pinned ? "📌" : "📍"}</span>
-        </button>
+        </div>
       </div>
 
       {/* Desk edge */}
@@ -145,7 +148,7 @@ export default function ChatPage() {
     setDialogOpen(true)
   }
 
-  const handleTogglePin = (e: React.MouseEvent, agent: Agent) => {
+  const handleTogglePin = (e: React.MouseEvent | React.KeyboardEvent, agent: Agent) => {
     e.stopPropagation()
     togglePinAgent(agent.id)
   }
