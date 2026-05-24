@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAppStore } from "@/lib/store"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
@@ -27,7 +26,17 @@ const DESK_THEMES = [
   { wall: "bg-fuchsia-200 dark:bg-fuchsia-800", desk: "bg-fuchsia-50 dark:bg-fuchsia-950", edge: "bg-fuchsia-300 dark:bg-fuchsia-700" },
 ]
 
-// Small decorative items scattered on the wall backdrop, based on agent tags/name
+const DESK_THEMES_MAP: Record<string, typeof DESK_THEMES[0]> = {
+  indigo: DESK_THEMES[0],
+  violet: DESK_THEMES[1],
+  sky: DESK_THEMES[2],
+  emerald: DESK_THEMES[3],
+  amber: DESK_THEMES[4],
+  rose: DESK_THEMES[5],
+  teal: DESK_THEMES[6],
+  fuchsia: DESK_THEMES[7],
+}
+
 function getDeskDecor(agent: Agent): string[] {
   const tags = agent.tags?.map((t) => t.toLowerCase()).join(" ") ?? ""
   const name = agent.name.toLowerCase()
@@ -47,30 +56,50 @@ function AgentCard({
   index,
   convCount,
   onClick,
+  onTogglePin,
 }: {
   agent: Agent
   index: number
   convCount: number
   onClick: () => void
+  onTogglePin: (e: React.MouseEvent) => void
 }) {
-  const theme = DESK_THEMES[index % DESK_THEMES.length]
+  const theme = agent.color
+    ? (DESK_THEMES_MAP[agent.color] ?? DESK_THEMES[index % DESK_THEMES.length])
+    : DESK_THEMES[index % DESK_THEMES.length]
   const decor = getDeskDecor(agent)
 
   return (
     <button
       onClick={onClick}
-      className="group text-left rounded-2xl overflow-hidden border border-transparent hover:border-white/60 dark:hover:border-white/20 hover:shadow-xl transition-all duration-200 hover:-translate-y-1 cursor-pointer w-full"
+      className="group text-left rounded-2xl overflow-hidden border border-transparent hover:border-white/60 dark:hover:border-white/20 hover:shadow-xl transition-all duration-200 hover:-translate-y-1 cursor-pointer w-full relative"
     >
+      {/* Pinned indicator */}
+      {agent.pinned && (
+        <span className="absolute top-2 left-2 z-20 text-amber-400 drop-shadow text-sm" title="已釘選">📌</span>
+      )}
+
       {/* Backdrop / wall area */}
       <div className={cn("relative h-28 flex items-center justify-center overflow-hidden", theme.wall)}>
-        {/* Scattered desk decorations */}
         <span className="absolute top-2 left-3 text-lg opacity-30 rotate-[-12deg] select-none">{decor[1]}</span>
         <span className="absolute bottom-3 right-3 text-base opacity-25 rotate-[8deg] select-none">{decor[2]}</span>
 
-        {/* Main avatar */}
         <span className="text-4xl group-hover:scale-110 transition-transform duration-200 select-none drop-shadow-sm z-10">
           {agent.avatar || "🤖"}
         </span>
+
+        {/* Pin toggle button — appears on hover */}
+        <button
+          onClick={onTogglePin}
+          className={cn(
+            "absolute top-2 right-2 z-20 p-1 rounded-full transition-all",
+            "bg-black/10 dark:bg-white/10 hover:bg-black/25 dark:hover:bg-white/25",
+            agent.pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          )}
+          title={agent.pinned ? "取消釘選" : "釘選到頂部"}
+        >
+          <span className="text-sm leading-none">{agent.pinned ? "📌" : "📍"}</span>
+        </button>
       </div>
 
       {/* Desk edge */}
@@ -86,7 +115,6 @@ function AgentCard({
         </div>
         <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{agent.description}</p>
 
-        {/* Desk nameplate */}
         <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/10 flex items-center gap-1.5">
           <span className="text-[10px]">{decor[0]}</span>
           <span className="text-[10px] text-muted-foreground">點擊開始對話</span>
@@ -98,7 +126,7 @@ function AgentCard({
 
 export default function ChatPage() {
   const router = useRouter()
-  const { agents, conversations, addConversation, setActiveConversation, isLoaded } = useAppStore()
+  const { agents, conversations, addConversation, setActiveConversation, isLoaded, togglePinAgent } = useAppStore()
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -106,9 +134,20 @@ export default function ChatPage() {
     ? conversations.filter((c) => c.agentId === selectedAgent.id)
     : []
 
+  const sortedAgents = [...agents].sort((a, b) => {
+    if (a.pinned && !b.pinned) return -1
+    if (!a.pinned && b.pinned) return 1
+    return 0
+  })
+
   const handleAgentClick = (agent: Agent) => {
     setSelectedAgent(agent)
     setDialogOpen(true)
+  }
+
+  const handleTogglePin = (e: React.MouseEvent, agent: Agent) => {
+    e.stopPropagation()
+    togglePinAgent(agent.id)
   }
 
   const handleNewConversation = () => {
@@ -147,12 +186,12 @@ export default function ChatPage() {
     <div className="flex flex-col h-full">
       <div className="px-6 py-5 border-b shrink-0">
         <h1 className="text-lg font-semibold">對話工作區</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">選擇一個 Agent 開始對話</p>
+        <p className="text-sm text-muted-foreground mt-0.5">選擇一個 Agent 開始對話・長按卡片可釘選</p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {agents.map((agent, index) => {
+          {sortedAgents.map((agent, index) => {
             const convCount = conversations.filter((c) => c.agentId === agent.id).length
             return (
               <AgentCard
@@ -161,6 +200,7 @@ export default function ChatPage() {
                 index={index}
                 convCount={convCount}
                 onClick={() => handleAgentClick(agent)}
+                onTogglePin={(e) => handleTogglePin(e, agent)}
               />
             )
           })}

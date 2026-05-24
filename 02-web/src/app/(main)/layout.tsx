@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/sidebar"
 import { DbLoader } from "@/components/db-loader"
+import { SearchModal } from "@/components/search-modal"
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -7,6 +8,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <DbLoader />
       <Sidebar />
       <main className="flex-1 overflow-hidden">{children}</main>
+      <SearchModal />
     </div>
   )
 }

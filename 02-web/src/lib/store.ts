@@ -19,8 +19,12 @@ interface AppState {
   updateLastMessage: (conversationId: string, content: string) => void
   removeLastAssistantMessage: (conversationId: string) => void
   deleteConversation: (id: string) => void
+  renameConversation: (id: string, title: string) => void
+  setConversationSystemPrompt: (conversationId: string, prompt: string) => void
   saveAgent: (agent: Agent) => void
   deleteAgent: (id: string) => void
+  togglePinAgent: (id: string) => void
+  toggleBookmarkMessage: (conversationId: string, messageId: string) => void
   toggleTheme: () => void
   toggleSidebar: () => void
 }
@@ -151,6 +155,23 @@ export const useAppStore = create<AppState>()(
         api(`/api/conversations/${id}`, { method: "DELETE" })
       },
 
+      renameConversation: (id, title) => {
+        set((state) => ({
+          conversations: state.conversations.map((conv) =>
+            conv.id === id ? { ...conv, title } : conv
+          ),
+        }))
+        api(`/api/conversations/${id}`, { method: "PATCH", body: JSON.stringify({ title }) })
+      },
+
+      setConversationSystemPrompt: (conversationId, prompt) => {
+        set((state) => ({
+          conversations: state.conversations.map((conv) =>
+            conv.id === conversationId ? { ...conv, systemPromptOverride: prompt } : conv
+          ),
+        }))
+      },
+
       saveAgent: (agent) => {
         const exists = !!get().agents.find((a) => a.id === agent.id)
         set((state) => ({
@@ -168,6 +189,28 @@ export const useAppStore = create<AppState>()(
       deleteAgent: (id) => {
         set((state) => ({ agents: state.agents.filter((a) => a.id !== id) }))
         api(`/api/agents/${id}`, { method: "DELETE" })
+      },
+
+      togglePinAgent: (id) => {
+        const agent = get().agents.find((a) => a.id === id)
+        if (!agent) return
+        const updated = { ...agent, pinned: !agent.pinned }
+        set((state) => ({ agents: state.agents.map((a) => a.id === id ? updated : a) }))
+        api(`/api/agents/${id}`, { method: "PUT", body: JSON.stringify(updated) })
+      },
+
+      toggleBookmarkMessage: (conversationId, messageId) => {
+        set((state) => ({
+          conversations: state.conversations.map((conv) => {
+            if (conv.id !== conversationId) return conv
+            return {
+              ...conv,
+              messages: conv.messages.map((msg) =>
+                msg.id === messageId ? { ...msg, bookmarked: !msg.bookmarked } : msg
+              ),
+            }
+          }),
+        }))
       },
 
       toggleTheme: () =>

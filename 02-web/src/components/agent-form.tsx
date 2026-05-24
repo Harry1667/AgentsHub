@@ -23,6 +23,17 @@ const MODELS = [
 
 const AVATAR_OPTIONS = ["🤖", "🧠", "✍️", "🌐", "📊", "💡", "⚡", "🌱", "💰", "🎯", "🔬", "🎨", "📚", "🏃", "🎵"]
 
+const COLOR_OPTIONS = [
+  { value: "indigo",   bg: "bg-indigo-400",   label: "靛藍" },
+  { value: "violet",   bg: "bg-violet-400",   label: "紫羅蘭" },
+  { value: "sky",      bg: "bg-sky-400",      label: "天空" },
+  { value: "emerald",  bg: "bg-emerald-400",  label: "翠綠" },
+  { value: "amber",    bg: "bg-amber-400",    label: "琥珀" },
+  { value: "rose",     bg: "bg-rose-400",     label: "玫瑰" },
+  { value: "teal",     bg: "bg-teal-400",     label: "青綠" },
+  { value: "fuchsia",  bg: "bg-fuchsia-400",  label: "紫紅" },
+]
+
 interface AgentFormProps {
   existingAgent?: Agent
 }
@@ -41,6 +52,8 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
     temperature: existingAgent?.temperature ?? 0.7,
     maxTokens: existingAgent?.maxTokens || 2048,
     tags: existingAgent?.tags || [],
+    pinned: existingAgent?.pinned ?? false,
+    color: existingAgent?.color,
   })
 
   const [tagInput, setTagInput] = useState("")
@@ -96,6 +109,45 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Workstation color */}
+          <div>
+            <Label className="mb-2 block">工位顏色</Label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setForm((f) => ({ ...f, color: undefined }))}
+                className={`w-8 h-8 rounded-full border-2 bg-gradient-to-br from-gray-300 to-gray-500 transition-all hover:scale-110 ${
+                  !form.color ? "border-indigo-500 ring-2 ring-indigo-300" : "border-transparent"
+                }`}
+                title="自動（隨機）"
+              />
+              {COLOR_OPTIONS.map((c) => (
+                <button
+                  key={c.value}
+                  onClick={() => setForm((f) => ({ ...f, color: c.value }))}
+                  className={`w-8 h-8 rounded-full border-2 ${c.bg} transition-all hover:scale-110 ${
+                    form.color === c.value ? "border-indigo-500 ring-2 ring-indigo-300" : "border-transparent"
+                  }`}
+                  title={c.label}
+                />
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1.5">選擇工作區卡片的主題色，留空則自動分配</p>
+          </div>
+
+          {/* Pin toggle */}
+          <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">釘選到工作區頂部</p>
+              <p className="text-xs text-muted-foreground">釘選後此 Agent 會固定顯示在最前面</p>
+            </div>
+            <button
+              onClick={() => setForm((f) => ({ ...f, pinned: !f.pinned }))}
+              className={`relative w-10 h-6 rounded-full transition-colors ${form.pinned ? "bg-indigo-500" : "bg-muted"}`}
+            >
+              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.pinned ? "translate-x-5" : "translate-x-1"}`} />
+            </button>
           </div>
 
           {/* Name */}

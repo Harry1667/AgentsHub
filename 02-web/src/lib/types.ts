@@ -10,6 +10,8 @@ export interface Agent {
   tags: string[]
   useCount?: number
   isDefault?: boolean
+  pinned?: boolean
+  color?: string
   createdAt: string
 }
 
@@ -18,6 +20,7 @@ export interface Message {
   role: "user" | "assistant"
   content: string
   createdAt: string
+  bookmarked?: boolean
 }
 
 export interface Conversation {
@@ -27,4 +30,5 @@ export interface Conversation {
   messages: Message[]
   createdAt: string
   updatedAt: string
+  systemPromptOverride?: string
 }

@@ -1,11 +1,22 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { useAppStore } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Send, User, Sparkles, Plus, AlertCircle, Copy, Check, RefreshCw } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Send, User, Sparkles, Plus, AlertCircle, Copy, Check, RefreshCw,
+  Bookmark, BookmarkCheck, Download, Settings, Pencil,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import ReactMarkdown from "react-markdown"
@@ -145,20 +156,33 @@ function AssistantMarkdown({ content }: { content: string }) {
 }
 
 function MessageBubble({
+  messageId,
+  conversationId,
   role,
   content,
   avatar,
   isLast,
+  createdAt,
+  bookmarked,
   onRegenerate,
+  onBookmark,
 }: {
+  messageId: string
+  conversationId: string
   role: "user" | "assistant"
   content: string
   avatar?: string
   isLast?: boolean
+  createdAt: string
+  bookmarked?: boolean
   onRegenerate?: () => void
+  onBookmark?: () => void
 }) {
   const isUser = role === "user"
   const [copied, setCopied] = useState(false)
+
+  const time = new Date(createdAt).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })
+  const fullTime = new Date(createdAt).toLocaleString("zh-TW")
 
   const handleCopy = () => {
     const { text } = parseProviderSuffix(content)
@@ -169,12 +193,22 @@ function MessageBubble({
   }
 
   return (
-    <div className={cn("flex gap-3 py-2", isUser && "flex-row-reverse")}>
-      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm", isUser ? "bg-indigo-500 text-white" : "bg-indigo-100 dark:bg-indigo-900")}>
+    <div className={cn("flex gap-3 py-2 group/msg", isUser && "flex-row-reverse")}>
+      <div className={cn(
+        "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm mt-1",
+        isUser ? "bg-indigo-500 text-white" : "bg-indigo-100 dark:bg-indigo-900"
+      )}>
         {isUser ? <User className="w-4 h-4" /> : <span>{avatar || "🤖"}</span>}
       </div>
-      <div className="flex flex-col gap-1 max-w-[70%]">
-        <div className={cn("relative group/msg rounded-2xl px-4 py-3 text-sm leading-relaxed break-words", isUser ? "bg-indigo-500 text-white rounded-tr-sm whitespace-pre-wrap" : "bg-muted rounded-tl-sm")}>
+
+      <div className={cn("flex flex-col gap-1 max-w-[70%]", isUser && "items-end")}>
+        {/* Bubble */}
+        <div className={cn(
+          "relative rounded-2xl px-4 py-3 text-sm leading-relaxed break-words",
+          isUser
+            ? "bg-indigo-500 text-white rounded-tr-sm whitespace-pre-wrap"
+            : "bg-muted rounded-tl-sm"
+        )}>
           {isUser ? content : <AssistantMarkdown content={content} />}
           {!isUser && (
             <button
@@ -188,8 +222,25 @@ function MessageBubble({
             </button>
           )}
         </div>
-        {!isUser && isLast && onRegenerate && (
-          <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity pl-1">
+
+        {/* Action bar — visible on hover */}
+        <div className={cn(
+          "flex items-center gap-2 px-1 opacity-0 group-hover/msg:opacity-100 transition-opacity",
+          isUser && "flex-row-reverse"
+        )}>
+          <span className="text-[10px] text-muted-foreground" title={fullTime}>{time}</span>
+          {onBookmark && (
+            <button
+              onClick={onBookmark}
+              className="transition-colors"
+              title={bookmarked ? "取消書籤" : "加入書籤"}
+            >
+              {bookmarked
+                ? <BookmarkCheck className="w-3 h-3 text-indigo-500" />
+                : <Bookmark className="w-3 h-3 text-muted-foreground hover:text-foreground" />}
+            </button>
+          )}
+          {!isUser && isLast && onRegenerate && (
             <button
               onClick={onRegenerate}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -197,8 +248,8 @@ function MessageBubble({
               <RefreshCw className="w-3 h-3" />
               重新生成
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )
@@ -210,13 +261,28 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const router = useRouter()
-  const { conversations, agents, addMessage, updateLastMessage, removeLastAssistantMessage, addConversation, setActiveConversation } = useAppStore()
+  const {
+    conversations, agents, addMessage, updateLastMessage, removeLastAssistantMessage,
+    addConversation, setActiveConversation, saveAgent,
+    renameConversation, setConversationSystemPrompt, toggleBookmarkMessage,
+  } = useAppStore()
+
   const [input, setInput] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedProvider, setSelectedProvider] = useState<ProviderOption>("auto")
+
+  // Rename title
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleInput, setTitleInput] = useState("")
+
+  // System prompt quick-edit
+  const [showSystemPrompt, setShowSystemPrompt] = useState(false)
+  const [editedSystemPrompt, setEditedSystemPrompt] = useState("")
+
   const scrollRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
 
   const conversation = conversations.find((c) => c.id === conversationId)
   const agent = conversation ? agents.find((a) => a.id === conversation.agentId) : agents[0]
@@ -227,12 +293,87 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     }
   }, [conversation?.messages, isStreaming])
 
+  useEffect(() => {
+    if (editingTitle && titleInputRef.current) {
+      titleInputRef.current.focus()
+      titleInputRef.current.select()
+    }
+  }, [editingTitle])
+
+  const handleNewChat = useCallback(() => {
+    const a = agent || agents[0]
+    if (!a) return
+    const conv = addConversation(a.id)
+    setActiveConversation(conv.id)
+    router.push(`/chat/${conv.id}`)
+  }, [agent, agents, addConversation, setActiveConversation, router])
+
+  // Cmd+N → new chat
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "n") {
+        e.preventDefault()
+        handleNewChat()
+      }
+    }
+    document.addEventListener("keydown", handler)
+    return () => document.removeEventListener("keydown", handler)
+  }, [handleNewChat])
+
+  const handleExport = useCallback(() => {
+    if (!conversation || !agent) return
+    const lines = [
+      `# ${conversation.title}`,
+      ``,
+      `> **Agent:** ${agent.avatar} ${agent.name}`,
+      `> **匯出時間:** ${new Date().toLocaleString("zh-TW")}`,
+      ``,
+      `---`,
+      ``,
+    ]
+    for (const msg of conversation.messages) {
+      const roleLabel = msg.role === "user" ? "## 你" : `## ${agent.name}`
+      const t = new Date(msg.createdAt).toLocaleString("zh-TW")
+      const { text } = parseProviderSuffix(msg.content)
+      lines.push(roleLabel, `*${t}*`, ``, text, ``, `---`, ``)
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${conversation.title.replace(/[/\\?%*:|"<>]/g, "-")}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [conversation, agent])
+
+  const handleRenameCommit = () => {
+    if (titleInput.trim() && conversationId) {
+      renameConversation(conversationId, titleInput.trim())
+    }
+    setEditingTitle(false)
+  }
+
+  const handleOpenSystemPrompt = () => {
+    setEditedSystemPrompt(conversation?.systemPromptOverride ?? agent?.systemPrompt ?? "")
+    setShowSystemPrompt(true)
+  }
+
+  const handleSaveSystemPrompt = () => {
+    if (conversationId) {
+      setConversationSystemPrompt(conversationId, editedSystemPrompt)
+    }
+    setShowSystemPrompt(false)
+  }
+
   const callProxy = async (convId: string, userPrompt: string) => {
     abortRef.current = new AbortController()
 
+    const conv = conversations.find((c) => c.id === convId)
+    const systemPrompt = conv?.systemPromptOverride ?? agent?.systemPrompt ?? ""
+
     const body: Record<string, string> = {
       prompt: userPrompt,
-      systemPrompt: agent?.systemPrompt || "",
+      systemPrompt,
       group: agent?.name || "chat",
     }
     if (selectedProvider !== "auto") {
@@ -267,12 +408,9 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       }
     }
 
-    const finalContent = accumulated
-      ? accumulated + providerSuffix
-      : "（無回應）"
+    const finalContent = accumulated ? accumulated + providerSuffix : "（無回應）"
     if (!accumulated) updateLastMessage(convId, finalContent)
 
-    // Persist final assistant message to DB
     fetch("/api/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -318,7 +456,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const handleRegenerate = async () => {
     if (!conversationId || !conversation || isStreaming) return
     const msgs = conversation.messages
-    // Find last user message before the last assistant message
     const lastAssistant = msgs[msgs.length - 1]
     if (!lastAssistant || lastAssistant.role !== "assistant") return
     const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user")
@@ -341,35 +478,70 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend() }
   }
 
-  const handleNewChat = () => {
-    const a = agents[0]
-    if (!a) return
-    const conv = addConversation(a.id)
-    setActiveConversation(conv.id)
-    router.push(`/chat/${conv.id}`)
-  }
-
   const isEmpty = !conversation || conversation.messages.length === 0
-
   const messages = conversation?.messages ?? []
   const lastMsg = messages[messages.length - 1]
   const lastIsAssistant = lastMsg?.role === "assistant"
 
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
       {agent && (
         <div className="flex items-center gap-3 px-6 py-4 border-b shrink-0">
           <span className="text-xl">{agent.avatar}</span>
-          <div>
+          <div className="flex-1 min-w-0">
             <h2 className="font-semibold text-sm">{agent.name}</h2>
-            <p className="text-xs text-muted-foreground">{isEmpty ? agent.description : conversation?.title}</p>
+            {editingTitle && conversation ? (
+              <Input
+                ref={titleInputRef}
+                value={titleInput}
+                onChange={(e) => setTitleInput(e.target.value)}
+                onBlur={handleRenameCommit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleRenameCommit()
+                  if (e.key === "Escape") setEditingTitle(false)
+                }}
+                className="h-5 text-xs border-0 border-b border-indigo-300 rounded-none shadow-none focus-visible:ring-0 p-0 mt-0.5"
+              />
+            ) : (
+              <button
+                className="flex items-center gap-1 group/rename text-left"
+                onClick={() => {
+                  if (!isEmpty && conversation) {
+                    setTitleInput(conversation.title)
+                    setEditingTitle(true)
+                  }
+                }}
+                title={!isEmpty ? "點擊重新命名" : undefined}
+              >
+                <p className="text-xs text-muted-foreground truncate">
+                  {isEmpty ? agent.description : conversation?.title}
+                </p>
+                {!isEmpty && (
+                  <Pencil className="w-2.5 h-2.5 text-muted-foreground/40 opacity-0 group-hover/rename:opacity-100 transition-opacity shrink-0" />
+                )}
+              </button>
+            )}
           </div>
-          <Button variant="outline" size="sm" className="ml-auto gap-1.5" onClick={handleNewChat}>
-            <Plus className="w-3.5 h-3.5" />新對話
-          </Button>
+          <div className="flex items-center gap-1">
+            {!isEmpty && (
+              <>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleOpenSystemPrompt} title="編輯 System Prompt">
+                  <Settings className="w-3.5 h-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport} title="匯出對話">
+                  <Download className="w-3.5 h-3.5" />
+                </Button>
+              </>
+            )}
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleNewChat}>
+              <Plus className="w-3.5 h-3.5" />新對話
+            </Button>
+          </div>
         </div>
       )}
 
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4" ref={scrollRef}>
         <div className="max-w-3xl mx-auto py-4">
           {isEmpty ? (
@@ -397,11 +569,16 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
               {messages.map((msg, idx) => (
                 <MessageBubble
                   key={msg.id}
+                  messageId={msg.id}
+                  conversationId={conversationId ?? ""}
                   role={msg.role}
                   content={msg.content}
                   avatar={agent?.avatar}
                   isLast={idx === messages.length - 1}
+                  createdAt={msg.createdAt}
+                  bookmarked={msg.bookmarked}
                   onRegenerate={idx === messages.length - 1 && lastIsAssistant && !isStreaming ? handleRegenerate : undefined}
+                  onBookmark={conversationId ? () => toggleBookmarkMessage(conversationId, msg.id) : undefined}
                 />
               ))}
               {isStreaming && messages[messages.length - 1]?.role === "user" && <TypingIndicator />}
@@ -416,6 +593,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         </div>
       </div>
 
+      {/* Input */}
       <div className="px-4 pb-4 shrink-0">
         <div className="max-w-3xl mx-auto">
           <div className="relative flex flex-col gap-2 rounded-2xl border bg-background shadow-sm px-4 py-3 focus-within:ring-2 focus-within:ring-indigo-300">
@@ -432,7 +610,10 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
               <Button
                 onClick={isStreaming ? () => abortRef.current?.abort() : () => handleSend()}
                 size="icon"
-                className={cn("h-8 w-8 rounded-xl shrink-0", isStreaming ? "bg-red-500 hover:bg-red-600" : "bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40")}
+                className={cn(
+                  "h-8 w-8 rounded-xl shrink-0",
+                  isStreaming ? "bg-red-500 hover:bg-red-600" : "bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40"
+                )}
                 disabled={!isStreaming && !input.trim()}
               >
                 {isStreaming
@@ -460,6 +641,34 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
           </div>
         </div>
       </div>
+
+      {/* System Prompt Dialog */}
+      <Dialog open={showSystemPrompt} onOpenChange={setShowSystemPrompt}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>快速編輯 System Prompt</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-2">
+            此修改僅套用於本次對話，不影響 Agent 的全域設定。
+          </p>
+          <div className="space-y-2">
+            <Label>System Prompt</Label>
+            <Textarea
+              value={editedSystemPrompt}
+              onChange={(e) => setEditedSystemPrompt(e.target.value)}
+              rows={12}
+              className="font-mono text-xs resize-none"
+              placeholder="在此輸入給 AI 的指令..."
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowSystemPrompt(false)}>取消</Button>
+            <Button onClick={handleSaveSystemPrompt} className="bg-indigo-500 hover:bg-indigo-600 text-white">
+              套用
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
