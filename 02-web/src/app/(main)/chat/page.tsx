@@ -16,19 +16,30 @@ import { Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Agent } from "@/lib/types"
 
-const CARD_COLORS = [
-  "bg-indigo-100 dark:bg-indigo-900",
-  "bg-violet-100 dark:bg-violet-900",
-  "bg-sky-100 dark:bg-sky-900",
-  "bg-emerald-100 dark:bg-emerald-900",
-  "bg-amber-100 dark:bg-amber-900",
-  "bg-rose-100 dark:bg-rose-900",
-  "bg-teal-100 dark:bg-teal-900",
-  "bg-fuchsia-100 dark:bg-fuchsia-900",
+const DESK_THEMES = [
+  { wall: "bg-indigo-200 dark:bg-indigo-800", desk: "bg-indigo-50 dark:bg-indigo-950", edge: "bg-indigo-300 dark:bg-indigo-700" },
+  { wall: "bg-violet-200 dark:bg-violet-800", desk: "bg-violet-50 dark:bg-violet-950", edge: "bg-violet-300 dark:bg-violet-700" },
+  { wall: "bg-sky-200 dark:bg-sky-800",       desk: "bg-sky-50 dark:bg-sky-950",       edge: "bg-sky-300 dark:bg-sky-700" },
+  { wall: "bg-emerald-200 dark:bg-emerald-800", desk: "bg-emerald-50 dark:bg-emerald-950", edge: "bg-emerald-300 dark:bg-emerald-700" },
+  { wall: "bg-amber-200 dark:bg-amber-800",   desk: "bg-amber-50 dark:bg-amber-950",   edge: "bg-amber-300 dark:bg-amber-700" },
+  { wall: "bg-rose-200 dark:bg-rose-800",     desk: "bg-rose-50 dark:bg-rose-950",     edge: "bg-rose-300 dark:bg-rose-700" },
+  { wall: "bg-teal-200 dark:bg-teal-800",     desk: "bg-teal-50 dark:bg-teal-950",     edge: "bg-teal-300 dark:bg-teal-700" },
+  { wall: "bg-fuchsia-200 dark:bg-fuchsia-800", desk: "bg-fuchsia-50 dark:bg-fuchsia-950", edge: "bg-fuchsia-300 dark:bg-fuchsia-700" },
 ]
 
-function getColorForAgent(index: number) {
-  return CARD_COLORS[index % CARD_COLORS.length]
+// Small decorative items scattered on the wall backdrop, based on agent tags/name
+function getDeskDecor(agent: Agent): string[] {
+  const tags = agent.tags?.map((t) => t.toLowerCase()).join(" ") ?? ""
+  const name = agent.name.toLowerCase()
+  if (name.includes("code") || tags.includes("程式") || tags.includes("code")) return ["💻", "☕", "🐛"]
+  if (name.includes("翻譯") || tags.includes("翻譯")) return ["📚", "🗺️", "✏️"]
+  if (name.includes("寫作") || tags.includes("寫作")) return ["📝", "✒️", "📖"]
+  if (name.includes("資料") || tags.includes("數據")) return ["📊", "🔍", "📈"]
+  if (name.includes("頭腦") || tags.includes("創意")) return ["💡", "🎯", "🌈"]
+  if (name.includes("財務") || tags.includes("財務")) return ["💰", "📋", "🏦"]
+  if (name.includes("生活") || tags.includes("生活")) return ["🌱", "⏰", "🎯"]
+  if (name.includes("prompt") || tags.includes("ai")) return ["⚡", "🤖", "✨"]
+  return ["📌", "🗂️", "☕"]
 }
 
 function AgentCard({
@@ -42,25 +53,45 @@ function AgentCard({
   convCount: number
   onClick: () => void
 }) {
+  const theme = DESK_THEMES[index % DESK_THEMES.length]
+  const decor = getDeskDecor(agent)
+
   return (
     <button
       onClick={onClick}
-      className={cn(
-        "group flex flex-col items-center gap-3 rounded-2xl border bg-card p-5 text-center transition-all duration-200",
-        "hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-600 hover:-translate-y-0.5",
-        "cursor-pointer"
-      )}
+      className="group text-left rounded-2xl overflow-hidden border border-transparent hover:border-white/60 dark:hover:border-white/20 hover:shadow-xl transition-all duration-200 hover:-translate-y-1 cursor-pointer w-full"
     >
-      <div className={cn("w-14 h-14 rounded-full flex items-center justify-center text-2xl shrink-0", getColorForAgent(index))}>
-        {agent.avatar || "🤖"}
+      {/* Backdrop / wall area */}
+      <div className={cn("relative h-28 flex items-center justify-center overflow-hidden", theme.wall)}>
+        {/* Scattered desk decorations */}
+        <span className="absolute top-2 left-3 text-lg opacity-30 rotate-[-12deg] select-none">{decor[1]}</span>
+        <span className="absolute bottom-3 right-3 text-base opacity-25 rotate-[8deg] select-none">{decor[2]}</span>
+
+        {/* Main avatar */}
+        <span className="text-4xl group-hover:scale-110 transition-transform duration-200 select-none drop-shadow-sm z-10">
+          {agent.avatar || "🤖"}
+        </span>
       </div>
-      <div className="w-full">
-        <h3 className="font-semibold text-sm truncate">{agent.name}</h3>
+
+      {/* Desk edge */}
+      <div className={cn("h-1.5", theme.edge)} />
+
+      {/* Desk surface */}
+      <div className={cn("px-4 py-3", theme.desk)}>
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-semibold text-sm leading-snug truncate">{agent.name}</h3>
+          <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5 bg-black/5 dark:bg-white/10 rounded-full px-2 py-0.5">
+            {convCount}
+          </span>
+        </div>
         <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{agent.description}</p>
+
+        {/* Desk nameplate */}
+        <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/10 flex items-center gap-1.5">
+          <span className="text-[10px]">{decor[0]}</span>
+          <span className="text-[10px] text-muted-foreground">點擊開始對話</span>
+        </div>
       </div>
-      <Badge variant="secondary" className="text-xs">
-        {convCount} 個對話
-      </Badge>
     </button>
   )
 }
