@@ -8,9 +8,11 @@ import { Badge } from "@/components/ui/badge"
 import { Send, User, Sparkles, Plus, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 async function* readSSEStream(response: Response): AsyncGenerator<{
-  content?: string
+  delta?: string
   done?: boolean
   actual_provider?: string
   actual_model?: string
@@ -52,6 +54,60 @@ function TypingIndicator() {
   )
 }
 
+function parseProviderSuffix(content: string) {
+  const match = content.match(/^([\s\S]*?)\n\n_via (.+?) · (.*?)_\s*$/)
+  if (match) return { text: match[1].trim(), provider: match[2], model: match[3] }
+  return { text: content, provider: null, model: null }
+}
+
+function AssistantMarkdown({ content }: { content: string }) {
+  const { text, provider, model } = parseProviderSuffix(content)
+  return (
+    <div>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+          h1: ({ children }) => <h1 className="text-base font-bold mt-3 mb-1">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-sm font-bold mt-3 mb-1">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-1">{children}</h3>,
+          ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-0.5">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
+          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+          em: ({ children }) => <em className="italic">{children}</em>,
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-2 border-muted-foreground/40 pl-3 my-2 text-muted-foreground italic">
+              {children}
+            </blockquote>
+          ),
+          code: ({ children, className }) => {
+            const isBlock = className?.startsWith("language-")
+            return isBlock ? (
+              <code className="block bg-black/10 dark:bg-white/10 rounded-lg px-3 py-2 my-2 text-xs font-mono overflow-x-auto whitespace-pre">
+                {children}
+              </code>
+            ) : (
+              <code className="bg-black/10 dark:bg-white/10 rounded px-1 py-0.5 text-xs font-mono">
+                {children}
+              </code>
+            )
+          },
+          pre: ({ children }) => <>{children}</>,
+          hr: () => <hr className="my-3 border-muted-foreground/20" />,
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+      {provider && (
+        <p className="mt-2 text-[10px] text-muted-foreground/60 border-t border-muted-foreground/10 pt-1.5">
+          via {provider}{model ? ` · ${model}` : ""}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function MessageBubble({ role, content, avatar }: { role: "user" | "assistant"; content: string; avatar?: string }) {
   const isUser = role === "user"
   return (
@@ -59,8 +115,8 @@ function MessageBubble({ role, content, avatar }: { role: "user" | "assistant"; 
       <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm", isUser ? "bg-indigo-500 text-white" : "bg-indigo-100 dark:bg-indigo-900")}>
         {isUser ? <User className="w-4 h-4" /> : <span>{avatar || "🤖"}</span>}
       </div>
-      <div className={cn("max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap break-words", isUser ? "bg-indigo-500 text-white rounded-tr-sm" : "bg-muted rounded-tl-sm")}>
-        {content}
+      <div className={cn("max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed break-words", isUser ? "bg-indigo-500 text-white rounded-tr-sm whitespace-pre-wrap" : "bg-muted rounded-tl-sm")}>
+        {isUser ? content : <AssistantMarkdown content={content} />}
       </div>
     </div>
   )
@@ -107,21 +163,38 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       throw new Error(err.error || `HTTP ${res.status}`)
     }
 
-    addMessage(convId, { role: "assistant", content: "" })
+    const assistantMsg = addMessage(convId, { role: "assistant", content: "" })
     let accumulated = ""
+    let providerSuffix = ""
 
     for await (const chunk of readSSEStream(res)) {
       if (chunk.error) throw new Error(chunk.error)
-      if (chunk.content) {
-        accumulated += chunk.content
+      if (chunk.delta) {
+        accumulated += chunk.delta
         updateLastMessage(convId, accumulated)
       }
       if (chunk.done && chunk.actual_provider) {
-        updateLastMessage(convId, accumulated + `\n\n_via ${chunk.actual_provider} · ${chunk.actual_model || ""}_`)
+        providerSuffix = `\n\n_via ${chunk.actual_provider} · ${chunk.actual_model || ""}_`
+        updateLastMessage(convId, accumulated + providerSuffix)
       }
     }
 
-    if (!accumulated) updateLastMessage(convId, "（無回應）")
+    const finalContent = accumulated
+      ? accumulated + providerSuffix
+      : "（無回應）"
+    if (!accumulated) updateLastMessage(convId, finalContent)
+
+    // Persist final assistant message to DB
+    fetch("/api/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: assistantMsg.id,
+        conversationId: convId,
+        role: "assistant",
+        content: finalContent,
+      }),
+    }).catch(console.error)
   }
 
   const handleSend = async () => {
@@ -138,7 +211,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       router.push(`/chat/${convId}`)
     }
 
-    addMessage(convId, { role: "user", content: trimmed })
+    addMessage(convId, { role: "user", content: trimmed }, true)
     setInput("")
     setError(null)
     setIsStreaming(true)
