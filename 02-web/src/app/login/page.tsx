@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, FormEvent } from "react"
+import { useState, FormEvent, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Bot, Lock } from "lucide-react"
+import { Bot, Lock, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Suspense } from "react"
 
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -23,7 +23,7 @@ function LoginForm() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password }),
       })
 
       if (res.ok) {
@@ -49,10 +49,23 @@ function LoginForm() {
             <Bot className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold">AgentHub</h1>
-          <p className="text-sm text-muted-foreground mt-1">請輸入密碼以繼續</p>
+          <p className="text-sm text-muted-foreground mt-1">請登入以繼續</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="帳號"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="pl-10"
+              autoFocus
+              autoComplete="username"
+            />
+          </div>
+
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -61,7 +74,6 @@ function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="pl-10"
-              autoFocus
               autoComplete="current-password"
             />
           </div>
@@ -72,10 +84,10 @@ function LoginForm() {
 
           <Button
             type="submit"
-            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white"
-            disabled={loading || !password}
+            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white mt-1"
+            disabled={loading || !username || !password}
           >
-            {loading ? "驗證中..." : "進入"}
+            {loading ? "驗證中..." : "登入"}
           </Button>
         </form>
       </div>

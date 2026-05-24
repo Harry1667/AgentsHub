@@ -1,53 +1,61 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getDb } from "@/lib/db"
+import { users } from "@/lib/db/schema"
+import { eq } from "drizzle-orm"
+import { signSession, hashPassword, verifyPassword, COOKIE_NAME, SESSION_DURATION_MS } from "@/lib/session"
 
-const COOKIE_NAME = "ah_session"
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
+async function ensureAdminExists() {
+  const db = getDb()
+  const adminUser = process.env.ADMIN_USERNAME
+  const adminPass = process.env.ADMIN_PASSWORD
+  if (!adminUser || !adminPass) return
 
-async function computeToken(secret: string): Promise<string> {
-  const enc = new TextEncoder()
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  )
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode("authenticated"))
-  return btoa(String.fromCharCode(...new Uint8Array(sig)))
+  const existing = await db.select({ id: users.id }).from(users).limit(1)
+  if (existing.length > 0) return
+
+  const hash = await hashPassword(adminPass)
+  await db.insert(users).values({
+    id: `user-admin-${Date.now()}`,
+    username: adminUser,
+    passwordHash: hash,
+    role: "admin",
+  })
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
+  const username: string = (body.username ?? "").trim()
   const password: string = body.password ?? ""
 
-  const SESSION_PASSWORD = process.env.SESSION_PASSWORD
-  const SESSION_SECRET = process.env.SESSION_SECRET
-
-  if (!SESSION_PASSWORD || !SESSION_SECRET) {
-    return NextResponse.json({ error: "Server not configured" }, { status: 500 })
+  if (!username || !password) {
+    return NextResponse.json({ error: "請填寫帳號與密碼" }, { status: 400 })
   }
 
-  // Timing-safe comparison via hash (avoids leaking password length)
-  const enc = new TextEncoder()
-  const [inputHash, expectedHash] = await Promise.all([
-    crypto.subtle.digest("SHA-256", enc.encode(password)),
-    crypto.subtle.digest("SHA-256", enc.encode(SESSION_PASSWORD)),
-  ])
-  const match =
-    btoa(String.fromCharCode(...new Uint8Array(inputHash))) ===
-    btoa(String.fromCharCode(...new Uint8Array(expectedHash)))
+  const secret = process.env.SESSION_SECRET
+  if (!secret) return NextResponse.json({ error: "Server not configured" }, { status: 500 })
 
-  if (!match) {
-    return NextResponse.json({ error: "密碼錯誤" }, { status: 401 })
+  await ensureAdminExists()
+
+  const db = getDb()
+  const [user] = await db.select().from(users).where(eq(users.username, username)).limit(1)
+
+  if (!user) {
+    return NextResponse.json({ error: "帳號或密碼錯誤" }, { status: 401 })
   }
 
-  const token = await computeToken(SESSION_SECRET)
-  const res = NextResponse.json({ ok: true })
+  const valid = await verifyPassword(password, user.passwordHash)
+  if (!valid) {
+    return NextResponse.json({ error: "帳號或密碼錯誤" }, { status: 401 })
+  }
+
+  const token = await signSession(secret, { sub: user.id, role: user.role })
+
+  const res = NextResponse.json({ ok: true, role: user.role })
   res.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
-    maxAge: COOKIE_MAX_AGE,
+    maxAge: SESSION_DURATION_MS / 1000,
     path: "/",
   })
   return res

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useAppStore } from "@/lib/store"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
+  Shield,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -77,6 +78,14 @@ export function Sidebar() {
   } = useAppStore()
 
   const [hoveredConv, setHoveredConv] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => { if (d.role === "admin") setIsAdmin(true) })
+      .catch(() => {})
+  }, [])
 
   const handleNewChat = () => {
     const defaultAgent = agents[0]
@@ -206,6 +215,15 @@ export function Sidebar() {
           collapsed={!sidebarOpen}
           onClick={() => router.push("/settings")}
         />
+        {isAdmin && (
+          <SidebarButton
+            icon={Shield}
+            label="用戶管理"
+            active={pathname.startsWith("/admin")}
+            collapsed={!sidebarOpen}
+            onClick={() => router.push("/admin")}
+          />
+        )}
       </div>
     </div>
   )

@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getDb } from "@/lib/db"
 import { conversations, messages } from "@/lib/db/schema"
-import { desc } from "drizzle-orm"
+import { eq, desc } from "drizzle-orm"
 
-export async function GET() {
+function getUserId(req: NextRequest): string {
+  return req.headers.get("x-user-id") ?? "anonymous"
+}
+
+export async function GET(req: NextRequest) {
   const db = getDb()
-  const convRows = await db.select().from(conversations).orderBy(desc(conversations.updatedAt))
+  const userId = getUserId(req)
+
+  const convRows = await db
+    .select()
+    .from(conversations)
+    .where(eq(conversations.userId, userId))
+    .orderBy(desc(conversations.updatedAt))
+
   const msgRows = await db.select().from(messages).orderBy(messages.createdAt)
 
   const msgMap = new Map<string, (typeof messages.$inferSelect)[]>()
@@ -35,9 +46,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const db = getDb()
+  const userId = getUserId(req)
   const body = await req.json()
   await db.insert(conversations).values({
     id: body.id,
+    userId,
     agentId: body.agentId,
     title: body.title ?? "新對話",
   })
