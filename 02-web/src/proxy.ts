@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 const COOKIE_NAME = "ah_session"
-const PUBLIC_PATHS = ["/login", "/api/auth/"]
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout"]
 const ADMIN_PATHS = ["/admin", "/api/admin/"]
 
 async function hmac(secret: string, data: string): Promise<string> {
@@ -60,10 +60,10 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL("/chat", req.url))
   }
 
-  const res = NextResponse.next()
-  res.headers.set("x-user-id", session.sub)
-  res.headers.set("x-user-role", session.role)
-  return res
+  const requestHeaders = new Headers(req.headers)
+  requestHeaders.set("x-user-id", session.sub)
+  requestHeaders.set("x-user-role", session.role)
+  return NextResponse.next({ request: { headers: requestHeaders } })
 }
 
 export const config = {

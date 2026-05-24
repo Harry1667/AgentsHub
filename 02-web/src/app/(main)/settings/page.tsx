@@ -1,20 +1,98 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useAppStore } from "@/lib/store"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
-import { Trash2, LogOut } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Trash2, LogOut, KeyRound, CheckCircle2, UserRound } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useAppStore()
   const router = useRouter()
 
+  const [username, setUsername] = useState("")
+  const [usernameInput, setUsernameInput] = useState("")
+  const [unError, setUnError] = useState("")
+  const [unSuccess, setUnSuccess] = useState(false)
+  const [unSaving, setUnSaving] = useState(false)
+
+  const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" })
+  const [pwError, setPwError] = useState("")
+  const [pwSuccess, setPwSuccess] = useState(false)
+  const [pwSaving, setPwSaving] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => { if (d.username) { setUsername(d.username); setUsernameInput(d.username) } })
+      .catch(() => {})
+  }, [])
+
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" })
     router.push("/login")
     router.refresh()
+  }
+
+  const handleChangeUsername = async () => {
+    setUnError("")
+    setUnSuccess(false)
+    if (usernameInput === username) return
+    setUnSaving(true)
+    try {
+      const res = await fetch("/api/auth/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: usernameInput }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setUsername(data.username)
+        setUnSuccess(true)
+      } else {
+        setUnError(data.error ?? "更改失敗")
+      }
+    } catch {
+      setUnError("連線錯誤，請稍後再試")
+    } finally {
+      setUnSaving(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    setPwError("")
+    setPwSuccess(false)
+    if (pwForm.next !== pwForm.confirm) {
+      setPwError("新密碼與確認密碼不一致")
+      return
+    }
+    if (pwForm.next.length < 6) {
+      setPwError("新密碼至少需要 6 個字元")
+      return
+    }
+    setPwSaving(true)
+    try {
+      const res = await fetch("/api/auth/password", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.next }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setPwSuccess(true)
+        setPwForm({ current: "", next: "", confirm: "" })
+      } else {
+        setPwError(data.error ?? "更改失敗")
+      }
+    } catch {
+      setPwError("連線錯誤，請稍後再試")
+    } finally {
+      setPwSaving(false)
+    }
   }
 
   return (
@@ -42,10 +120,94 @@ export default function SettingsPage() {
 
           <section>
             <h2 className="text-base font-semibold mb-4">帳號</h2>
-            <Button variant="outline" className="gap-2" onClick={handleLogout}>
-              <LogOut className="w-4 h-4" />
-              登出
-            </Button>
+            <div className="space-y-4 max-w-sm mb-8">
+              <div className="flex items-center gap-2 mb-2">
+                <UserRound className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">帳號名稱</span>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">帳號</Label>
+                <Input
+                  type="text"
+                  value={usernameInput}
+                  onChange={(e) => { setUsernameInput(e.target.value); setUnSuccess(false) }}
+                  autoComplete="username"
+                  maxLength={64}
+                />
+              </div>
+              {unError && <p className="text-sm text-red-500">{unError}</p>}
+              {unSuccess && (
+                <div className="flex items-center gap-1.5 text-sm text-green-600">
+                  <CheckCircle2 className="w-4 h-4" />
+                  帳號名稱已更新
+                </div>
+              )}
+              <Button
+                className="bg-indigo-500 hover:bg-indigo-600 text-white"
+                disabled={unSaving || !usernameInput || usernameInput === username}
+                onClick={handleChangeUsername}
+              >
+                {unSaving ? "儲存中..." : "儲存帳號"}
+              </Button>
+            </div>
+
+            <div className="space-y-4 max-w-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <KeyRound className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">更改密碼</span>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">目前密碼</Label>
+                <Input
+                  type="password"
+                  placeholder="••••••"
+                  value={pwForm.current}
+                  onChange={(e) => setPwForm({ ...pwForm, current: e.target.value })}
+                  autoComplete="current-password"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">新密碼</Label>
+                <Input
+                  type="password"
+                  placeholder="••••••（至少 6 個字元）"
+                  value={pwForm.next}
+                  onChange={(e) => setPwForm({ ...pwForm, next: e.target.value })}
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">確認新密碼</Label>
+                <Input
+                  type="password"
+                  placeholder="••••••"
+                  value={pwForm.confirm}
+                  onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
+                  autoComplete="new-password"
+                />
+              </div>
+              {pwError && <p className="text-sm text-red-500">{pwError}</p>}
+              {pwSuccess && (
+                <div className="flex items-center gap-1.5 text-sm text-green-600">
+                  <CheckCircle2 className="w-4 h-4" />
+                  密碼已成功更改
+                </div>
+              )}
+              <Button
+                className="bg-indigo-500 hover:bg-indigo-600 text-white"
+                disabled={pwSaving || !pwForm.current || !pwForm.next || !pwForm.confirm}
+                onClick={handleChangePassword}
+              >
+                {pwSaving ? "儲存中..." : "確認更改"}
+              </Button>
+            </div>
+
+            <div className="mt-6">
+              <Button variant="outline" className="gap-2" onClick={handleLogout}>
+                <LogOut className="w-4 h-4" />
+                登出
+              </Button>
+            </div>
           </section>
 
           <Separator />
