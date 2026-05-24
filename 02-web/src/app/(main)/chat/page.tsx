@@ -16,25 +16,33 @@ import { cn } from "@/lib/utils"
 import { Agent } from "@/lib/types"
 
 const DESK_THEMES = [
-  { wall: "bg-indigo-200 dark:bg-indigo-800", desk: "bg-indigo-50 dark:bg-indigo-950", edge: "bg-indigo-300 dark:bg-indigo-700" },
-  { wall: "bg-violet-200 dark:bg-violet-800", desk: "bg-violet-50 dark:bg-violet-950", edge: "bg-violet-300 dark:bg-violet-700" },
-  { wall: "bg-sky-200 dark:bg-sky-800",       desk: "bg-sky-50 dark:bg-sky-950",       edge: "bg-sky-300 dark:bg-sky-700" },
-  { wall: "bg-emerald-200 dark:bg-emerald-800", desk: "bg-emerald-50 dark:bg-emerald-950", edge: "bg-emerald-300 dark:bg-emerald-700" },
-  { wall: "bg-amber-200 dark:bg-amber-800",   desk: "bg-amber-50 dark:bg-amber-950",   edge: "bg-amber-300 dark:bg-amber-700" },
-  { wall: "bg-rose-200 dark:bg-rose-800",     desk: "bg-rose-50 dark:bg-rose-950",     edge: "bg-rose-300 dark:bg-rose-700" },
-  { wall: "bg-teal-200 dark:bg-teal-800",     desk: "bg-teal-50 dark:bg-teal-950",     edge: "bg-teal-300 dark:bg-teal-700" },
-  { wall: "bg-fuchsia-200 dark:bg-fuchsia-800", desk: "bg-fuchsia-50 dark:bg-fuchsia-950", edge: "bg-fuchsia-300 dark:bg-fuchsia-700" },
+  // Warm sand
+  { wall: "bg-amber-100 dark:bg-amber-900",  desk: "bg-amber-50 dark:bg-amber-950",   edge: "bg-amber-200 dark:bg-amber-800" },
+  // Dusty rose
+  { wall: "bg-rose-100 dark:bg-rose-900",    desk: "bg-rose-50 dark:bg-rose-950",     edge: "bg-rose-200 dark:bg-rose-800" },
+  // Warm stone
+  { wall: "bg-stone-200 dark:bg-stone-800",  desk: "bg-stone-100 dark:bg-stone-900",  edge: "bg-stone-300 dark:bg-stone-700" },
+  // Peach / apricot
+  { wall: "bg-orange-100 dark:bg-orange-900", desk: "bg-orange-50 dark:bg-orange-950", edge: "bg-orange-200 dark:bg-orange-800" },
+  // Sunshine yellow
+  { wall: "bg-yellow-100 dark:bg-yellow-900", desk: "bg-yellow-50 dark:bg-yellow-950", edge: "bg-yellow-200 dark:bg-yellow-800" },
+  // Soft sage
+  { wall: "bg-lime-100 dark:bg-lime-900",    desk: "bg-lime-50 dark:bg-lime-950",     edge: "bg-lime-200 dark:bg-lime-800" },
+  // Blush pink
+  { wall: "bg-pink-100 dark:bg-pink-900",    desk: "bg-pink-50 dark:bg-pink-950",     edge: "bg-pink-200 dark:bg-pink-800" },
+  // Lavender
+  { wall: "bg-purple-100 dark:bg-purple-900", desk: "bg-purple-50 dark:bg-purple-950", edge: "bg-purple-200 dark:bg-purple-800" },
 ]
 
 const DESK_THEMES_MAP: Record<string, typeof DESK_THEMES[0]> = {
-  indigo: DESK_THEMES[0],
-  violet: DESK_THEMES[1],
-  sky: DESK_THEMES[2],
-  emerald: DESK_THEMES[3],
-  amber: DESK_THEMES[4],
-  rose: DESK_THEMES[5],
-  teal: DESK_THEMES[6],
-  fuchsia: DESK_THEMES[7],
+  amber:  DESK_THEMES[0],
+  rose:   DESK_THEMES[1],
+  stone:  DESK_THEMES[2],
+  orange: DESK_THEMES[3],
+  yellow: DESK_THEMES[4],
+  lime:   DESK_THEMES[5],
+  pink:   DESK_THEMES[6],
+  purple: DESK_THEMES[7],
 }
 
 function getDeskDecor(agent: Agent): string[] {
@@ -221,7 +229,7 @@ export default function ChatPage() {
           <div className="flex flex-col gap-3">
             <Button
               onClick={handleNewConversation}
-              className="w-full gap-2 bg-indigo-500 hover:bg-indigo-600 text-white"
+              className="w-full gap-2 bg-amber-700 hover:bg-amber-800 text-white"
             >
               <Plus className="w-4 h-4" />
               新對話

@@ -93,15 +93,15 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+            <Shield className="w-5 h-5 text-amber-700 dark:text-amber-400" />
           </div>
           <div>
             <h1 className="text-2xl font-bold">用戶管理</h1>
             <p className="text-sm text-muted-foreground">管理 AgentHub 的所有用戶帳號</p>
           </div>
           <Button
-            className="ml-auto bg-indigo-500 hover:bg-indigo-600 text-white gap-2"
+            className="ml-auto bg-amber-700 hover:bg-amber-800 text-white gap-2"
             onClick={() => { setShowCreate(true); setError("") }}
           >
             <Plus className="w-4 h-4" />新增用戶
@@ -126,7 +126,7 @@ export default function AdminPage() {
                     <span className="font-medium text-sm">{user.username}</span>
                     <Badge
                       variant={user.role === "admin" ? "default" : "secondary"}
-                      className={user.role === "admin" ? "bg-indigo-500 hover:bg-indigo-600" : ""}
+                      className={user.role === "admin" ? "bg-amber-700 hover:bg-amber-800" : ""}
                     >
                       {user.role === "admin" ? "管理員" : "一般用戶"}
                     </Badge>
@@ -208,7 +208,7 @@ export default function AdminPage() {
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setShowCreate(false)}>取消</Button>
               <Button
-                className="bg-indigo-500 hover:bg-indigo-600 text-white"
+                className="bg-amber-700 hover:bg-amber-800 text-white"
                 disabled={saving || !form.username || !form.password}
                 onClick={createUser}
               >
@@ -239,7 +239,7 @@ export default function AdminPage() {
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setShowReset(null)}>取消</Button>
               <Button
-                className="bg-indigo-500 hover:bg-indigo-600 text-white"
+                className="bg-amber-700 hover:bg-amber-800 text-white"
                 disabled={saving || !newPassword}
                 onClick={resetPassword}
               >

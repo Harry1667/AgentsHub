@@ -62,7 +62,7 @@ async function* readSSEStream(response: Response): AsyncGenerator<{
 function TypingIndicator() {
   return (
     <div className="flex gap-3 py-4">
-      <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center shrink-0 text-base">
+      <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center shrink-0 text-base">
         🤖
       </div>
       <div className="flex items-center gap-1 bg-muted rounded-2xl rounded-tl-sm px-4 py-3">
@@ -196,7 +196,7 @@ function MessageBubble({
     <div className={cn("flex gap-3 py-2 group/msg", isUser && "flex-row-reverse")}>
       <div className={cn(
         "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm mt-1",
-        isUser ? "bg-indigo-500 text-white" : "bg-indigo-100 dark:bg-indigo-900"
+        isUser ? "bg-amber-700 text-white" : "bg-amber-100 dark:bg-amber-900"
       )}>
         {isUser ? <User className="w-4 h-4" /> : <span>{avatar || "🤖"}</span>}
       </div>
@@ -206,7 +206,7 @@ function MessageBubble({
         <div className={cn(
           "relative rounded-2xl px-4 py-3 text-sm leading-relaxed break-words",
           isUser
-            ? "bg-indigo-500 text-white rounded-tr-sm whitespace-pre-wrap"
+            ? "bg-amber-700 text-white rounded-tr-sm whitespace-pre-wrap"
             : "bg-muted rounded-tl-sm"
         )}>
           {isUser ? content : <AssistantMarkdown content={content} />}
@@ -236,7 +236,7 @@ function MessageBubble({
               title={bookmarked ? "取消書籤" : "加入書籤"}
             >
               {bookmarked
-                ? <BookmarkCheck className="w-3 h-3 text-indigo-500" />
+                ? <BookmarkCheck className="w-3 h-3 text-amber-700" />
                 : <Bookmark className="w-3 h-3 text-muted-foreground hover:text-foreground" />}
             </button>
           )}
@@ -501,7 +501,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   if (e.key === "Enter") handleRenameCommit()
                   if (e.key === "Escape") setEditingTitle(false)
                 }}
-                className="h-5 text-xs border-0 border-b border-indigo-300 rounded-none shadow-none focus-visible:ring-0 p-0 mt-0.5"
+                className="h-5 text-xs border-0 border-b border-amber-300 rounded-none shadow-none focus-visible:ring-0 p-0 mt-0.5"
               />
             ) : (
               <button
@@ -558,8 +558,8 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg w-full">
                 {["幫我分析這段程式碼", "解釋這個概念", "幫我優化文案", "翻譯成英文"].map((p) => (
-                  <button key={p} onClick={() => setInput(p)} className="text-left px-4 py-3 rounded-xl border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-sm text-muted-foreground transition-colors">
-                    <Sparkles className="w-3.5 h-3.5 inline mr-1.5 text-indigo-400" />{p}
+                  <button key={p} onClick={() => setInput(p)} className="text-left px-4 py-3 rounded-xl border hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950 text-sm text-muted-foreground transition-colors">
+                    <Sparkles className="w-3.5 h-3.5 inline mr-1.5 text-amber-500" />{p}
                   </button>
                 ))}
               </div>
@@ -596,7 +596,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       {/* Input */}
       <div className="px-4 pb-4 shrink-0">
         <div className="max-w-3xl mx-auto">
-          <div className="relative flex flex-col gap-2 rounded-2xl border bg-background shadow-sm px-4 py-3 focus-within:ring-2 focus-within:ring-indigo-300">
+          <div className="relative flex flex-col gap-2 rounded-2xl border bg-background shadow-sm px-4 py-3 focus-within:ring-2 focus-within:ring-amber-300">
             <div className="flex items-end gap-2">
               <Textarea
                 value={input}
@@ -612,7 +612,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 size="icon"
                 className={cn(
                   "h-8 w-8 rounded-xl shrink-0",
-                  isStreaming ? "bg-red-500 hover:bg-red-600" : "bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40"
+                  isStreaming ? "bg-red-500 hover:bg-red-600" : "bg-amber-700 hover:bg-amber-800 disabled:opacity-40"
                 )}
                 disabled={!isStreaming && !input.trim()}
               >
@@ -630,7 +630,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   className={cn(
                     "px-2.5 py-1 rounded-full text-xs transition-colors",
                     selectedProvider === opt.value
-                      ? "bg-indigo-500 text-white"
+                      ? "bg-amber-700 text-white"
                       : "bg-muted text-muted-foreground hover:bg-muted/80"
                   )}
                 >
@@ -663,7 +663,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowSystemPrompt(false)}>取消</Button>
-            <Button onClick={handleSaveSystemPrompt} className="bg-indigo-500 hover:bg-indigo-600 text-white">
+            <Button onClick={handleSaveSystemPrompt} className="bg-amber-700 hover:bg-amber-800 text-white">
               套用
             </Button>
           </div>

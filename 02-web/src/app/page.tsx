@@ -46,7 +46,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-amber-700 flex items-center justify-center">
               <Bot className="w-5 h-5 text-white" />
             </div>
             <span className="font-bold text-lg">AgentHub</span>
@@ -57,7 +57,7 @@ export default function LandingPage() {
               Agent 廣場
             </Button>
             <Button
-              className="bg-indigo-500 hover:bg-indigo-600 text-white gap-1.5"
+              className="bg-amber-700 hover:bg-amber-800 text-white gap-1.5"
               onClick={() => router.push("/chat")}
             >
               開始使用
@@ -71,13 +71,13 @@ export default function LandingPage() {
       <section className="pt-32 pb-20 px-6 text-center">
         <div className="max-w-4xl mx-auto">
           <Badge variant="secondary" className="mb-4 gap-1.5">
-            <Sparkles className="w-3 h-3 text-indigo-500" />
+            <Sparkles className="w-3 h-3 text-amber-700" />
             個人 AI 助手平台
           </Badge>
 
           <h1 className="text-5xl sm:text-6xl font-bold leading-tight mb-6">
             打造你的
-            <span className="text-indigo-500"> AI 夢幻隊</span>
+            <span className="text-amber-700"> AI 夢幻隊</span>
           </h1>
 
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
@@ -89,7 +89,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button
               size="lg"
-              className="bg-indigo-500 hover:bg-indigo-600 text-white gap-2 h-12 px-8"
+              className="bg-amber-700 hover:bg-amber-800 text-white gap-2 h-12 px-8"
               onClick={() => router.push("/chat")}
             >
               <MessageSquare className="w-5 h-5" />
@@ -117,7 +117,7 @@ export default function LandingPage() {
               <button
                 key={agent.name}
                 onClick={() => router.push("/marketplace")}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl border bg-background hover:border-indigo-300 hover:shadow-md transition-all group"
+                className="flex flex-col items-center gap-2 p-4 rounded-2xl border bg-background hover:border-amber-300 hover:shadow-md transition-all group"
               >
                 <span className="text-3xl group-hover:scale-110 transition-transform">{agent.avatar}</span>
                 <div className="text-center">
@@ -136,9 +136,9 @@ export default function LandingPage() {
           <h2 className="text-3xl font-bold text-center mb-12">為什麼選擇 AgentHub？</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {FEATURES.map((feat) => (
-              <div key={feat.title} className="p-6 rounded-2xl border hover:border-indigo-200 transition-colors">
-                <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center mb-4">
-                  <feat.icon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              <div key={feat.title} className="p-6 rounded-2xl border hover:border-amber-200 transition-colors">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center mb-4">
+                  <feat.icon className="w-5 h-5 text-amber-700 dark:text-amber-400" />
                 </div>
                 <h3 className="font-semibold mb-2">{feat.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{feat.desc}</p>
@@ -149,13 +149,13 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 px-6 text-center bg-indigo-500">
+      <section className="py-20 px-6 text-center bg-amber-700">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-3xl font-bold text-white mb-4">準備好了嗎？</h2>
-          <p className="text-indigo-100 mb-8">免費使用，無需註冊，帶入你自己的 API 金鑰即可</p>
+          <p className="text-amber-100 mb-8">免費使用，無需註冊，帶入你自己的 API 金鑰即可</p>
           <Button
             size="lg"
-            className="bg-white text-indigo-600 hover:bg-indigo-50 gap-2 h-12 px-8"
+            className="bg-white text-amber-700 hover:bg-amber-50 gap-2 h-12 px-8"
             onClick={() => router.push("/chat")}
           >
             立即開始

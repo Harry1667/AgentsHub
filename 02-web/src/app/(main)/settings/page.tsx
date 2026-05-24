@@ -143,7 +143,7 @@ export default function SettingsPage() {
                 </div>
               )}
               <Button
-                className="bg-indigo-500 hover:bg-indigo-600 text-white"
+                className="bg-amber-700 hover:bg-amber-800 text-white"
                 disabled={unSaving || !usernameInput || usernameInput === username}
                 onClick={handleChangeUsername}
               >
@@ -194,7 +194,7 @@ export default function SettingsPage() {
                 </div>
               )}
               <Button
-                className="bg-indigo-500 hover:bg-indigo-600 text-white"
+                className="bg-amber-700 hover:bg-amber-800 text-white"
                 disabled={pwSaving || !pwForm.current || !pwForm.next || !pwForm.confirm}
                 onClick={handleChangePassword}
               >

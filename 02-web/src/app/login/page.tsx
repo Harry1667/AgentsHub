@@ -45,7 +45,7 @@ function LoginForm() {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500 flex items-center justify-center mb-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-700 flex items-center justify-center mb-4">
             <Bot className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold">AgentHub</h1>
@@ -84,7 +84,7 @@ function LoginForm() {
 
           <Button
             type="submit"
-            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white mt-1"
+            className="w-full bg-amber-700 hover:bg-amber-800 text-white mt-1"
             disabled={loading || !username || !password}
           >
             {loading ? "驗證中..." : "登入"}

@@ -71,7 +71,7 @@ export default function MarketplacePage() {
               key={cat}
               variant={category === cat ? "default" : "outline"}
               size="sm"
-              className={category === cat ? "bg-indigo-500 hover:bg-indigo-600" : ""}
+              className={category === cat ? "bg-amber-700 hover:bg-amber-800" : ""}
               onClick={() => setCategory(cat)}
             >
               {cat}
@@ -110,7 +110,7 @@ export default function MarketplacePage() {
                 <CardFooter className="gap-2 pt-2">
                   <Button
                     size="sm"
-                    className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white"
+                    className="flex-1 bg-amber-700 hover:bg-amber-800 text-white"
                     onClick={() => handleUse(agent)}
                   >
                     開始對話

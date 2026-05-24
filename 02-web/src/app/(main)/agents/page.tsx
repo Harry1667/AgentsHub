@@ -26,7 +26,7 @@ export default function AgentsPage() {
             <p className="text-muted-foreground text-sm">管理你的 AI 助手，自訂個性與能力</p>
           </div>
           <Button
-            className="gap-2 bg-indigo-500 hover:bg-indigo-600 text-white"
+            className="gap-2 bg-amber-700 hover:bg-amber-800 text-white"
             onClick={() => router.push("/agents/new")}
           >
             <Plus className="w-4 h-4" />
@@ -57,7 +57,7 @@ export default function AgentsPage() {
               <CardFooter className="gap-2 pt-2">
                 <Button
                   size="sm"
-                  className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white"
+                  className="flex-1 bg-amber-700 hover:bg-amber-800 text-white"
                   onClick={() => handleChat(agent.id)}
                 >
                   <MessageSquare className="w-3.5 h-3.5 mr-1" />
@@ -85,7 +85,7 @@ export default function AgentsPage() {
           {/* Add card */}
           <button
             onClick={() => router.push("/agents/new")}
-            className="min-h-[200px] rounded-xl border-2 border-dashed border-muted-foreground/25 hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-indigo-500 transition-all"
+            className="min-h-[200px] rounded-xl border-2 border-dashed border-muted-foreground/25 hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-amber-700 transition-all"
           >
             <Plus className="w-8 h-8" />
             <span className="text-sm">建立新 Agent</span>

@@ -94,14 +94,14 @@ export function Sidebar() {
       <div className={cn("flex items-center border-b px-2 py-3", sidebarOpen ? "justify-between" : "justify-center")}>
         {sidebarOpen && (
           <div className="flex items-center gap-2 px-1">
-            <div className="w-7 h-7 rounded-lg bg-indigo-500 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-amber-700 flex items-center justify-center">
               <Bot className="w-4 h-4 text-white" />
             </div>
             <span className="font-semibold text-sm">AgentHub</span>
           </div>
         )}
         {!sidebarOpen && (
-          <div className="w-7 h-7 rounded-lg bg-indigo-500 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-amber-700 flex items-center justify-center">
             <Bot className="w-4 h-4 text-white" />
           </div>
         )}

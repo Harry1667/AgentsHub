@@ -48,73 +48,107 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ─── Warm Home Light Mode ─── */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* Warm parchment background — like unread letters on a sunlit desk */
+  --background: oklch(0.977 0.014 83);
+  --foreground: oklch(0.185 0.042 52);
+
+  --card: oklch(0.987 0.008 80);
+  --card-foreground: oklch(0.185 0.042 52);
+
+  --popover: oklch(0.987 0.008 80);
+  --popover-foreground: oklch(0.185 0.042 52);
+
+  /* Warm amber — the colour of old honey and good wood */
+  --primary: oklch(0.555 0.138 50);
+  --primary-foreground: oklch(0.988 0.008 80);
+
+  /* Warm beige surfaces */
+  --secondary: oklch(0.933 0.022 78);
+  --secondary-foreground: oklch(0.255 0.038 55);
+
+  --muted: oklch(0.933 0.022 78);
+  --muted-foreground: oklch(0.505 0.030 58);
+
+  --accent: oklch(0.933 0.022 78);
+  --accent-foreground: oklch(0.255 0.038 55);
+
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Warm tan border */
+  --border: oklch(0.878 0.024 75);
+  --input: oklch(0.878 0.024 75);
+
+  /* Warm amber focus ring */
+  --ring: oklch(0.72 0.14 65);
+
+  /* Slightly more rounded — feels softer and more home-like */
+  --radius: 0.75rem;
+
+  /* Sidebar slightly warmer/creamier than main background */
+  --sidebar: oklch(0.962 0.020 80);
+  --sidebar-foreground: oklch(0.185 0.042 52);
+  --sidebar-primary: oklch(0.555 0.138 50);
+  --sidebar-primary-foreground: oklch(0.988 0.008 80);
+  --sidebar-accent: oklch(0.933 0.022 78);
+  --sidebar-accent-foreground: oklch(0.255 0.038 55);
+  --sidebar-border: oklch(0.878 0.024 75);
+  --sidebar-ring: oklch(0.72 0.14 65);
+
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
 }
 
+/* ─── Warm Home Dark Mode — candlelit evening ─── */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* Deep warm brown — like an old reading room at night */
+  --background: oklch(0.148 0.028 52);
+  --foreground: oklch(0.948 0.016 78);
+
+  --card: oklch(0.195 0.026 52);
+  --card-foreground: oklch(0.948 0.016 78);
+
+  --popover: oklch(0.195 0.026 52);
+  --popover-foreground: oklch(0.948 0.016 78);
+
+  /* Brighter amber for dark mode readability */
+  --primary: oklch(0.72 0.14 62);
+  --primary-foreground: oklch(0.148 0.028 52);
+
+  --secondary: oklch(0.268 0.023 52);
+  --secondary-foreground: oklch(0.948 0.016 78);
+
+  --muted: oklch(0.268 0.023 52);
+  --muted-foreground: oklch(0.672 0.020 70);
+
+  --accent: oklch(0.268 0.023 52);
+  --accent-foreground: oklch(0.948 0.016 78);
+
   --destructive: oklch(0.704 0.191 22.216);
+
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.68 0.12 60);
+
+  /* Sidebar: slightly darker, like a wooden panelled wall */
+  --sidebar: oklch(0.182 0.030 50);
+  --sidebar-foreground: oklch(0.948 0.016 78);
+  --sidebar-primary: oklch(0.72 0.14 62);
+  --sidebar-primary-foreground: oklch(0.148 0.028 52);
+  --sidebar-accent: oklch(0.268 0.023 52);
+  --sidebar-accent-foreground: oklch(0.948 0.016 78);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.68 0.12 60);
+
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
 }
 
 @layer base {

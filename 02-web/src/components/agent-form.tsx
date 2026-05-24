@@ -24,14 +24,14 @@ const MODELS = [
 const AVATAR_OPTIONS = ["🤖", "🧠", "✍️", "🌐", "📊", "💡", "⚡", "🌱", "💰", "🎯", "🔬", "🎨", "📚", "🏃", "🎵"]
 
 const COLOR_OPTIONS = [
-  { value: "indigo",   bg: "bg-indigo-400",   label: "靛藍" },
-  { value: "violet",   bg: "bg-violet-400",   label: "紫羅蘭" },
-  { value: "sky",      bg: "bg-sky-400",      label: "天空" },
-  { value: "emerald",  bg: "bg-emerald-400",  label: "翠綠" },
-  { value: "amber",    bg: "bg-amber-400",    label: "琥珀" },
-  { value: "rose",     bg: "bg-rose-400",     label: "玫瑰" },
-  { value: "teal",     bg: "bg-teal-400",     label: "青綠" },
-  { value: "fuchsia",  bg: "bg-fuchsia-400",  label: "紫紅" },
+  { value: "amber",  bg: "bg-amber-400",  label: "暖沙" },
+  { value: "rose",   bg: "bg-rose-400",   label: "玫瑰" },
+  { value: "stone",  bg: "bg-stone-400",  label: "暖石" },
+  { value: "orange", bg: "bg-orange-400", label: "橘杏" },
+  { value: "yellow", bg: "bg-yellow-400", label: "陽光" },
+  { value: "lime",   bg: "bg-lime-400",   label: "薄荷" },
+  { value: "pink",   bg: "bg-pink-400",   label: "淡粉" },
+  { value: "purple", bg: "bg-purple-400", label: "薰衣草" },
 ]
 
 interface AgentFormProps {
@@ -83,7 +83,7 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
           <p className="text-muted-foreground text-sm">設定你的 AI 助手個性與能力</p>
         </div>
         <Button
-          className="ml-auto bg-indigo-500 hover:bg-indigo-600 text-white"
+          className="ml-auto bg-amber-700 hover:bg-amber-800 text-white"
           onClick={handleSave}
           disabled={!form.name.trim()}
         >
@@ -102,7 +102,7 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
                   key={emoji}
                   onClick={() => setForm((f) => ({ ...f, avatar: emoji }))}
                   className={`w-10 h-10 text-xl rounded-lg border-2 transition-all hover:scale-110 ${
-                    form.avatar === emoji ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950" : "border-transparent"
+                    form.avatar === emoji ? "border-amber-600 bg-amber-50 dark:bg-amber-950" : "border-transparent"
                   }`}
                 >
                   {emoji}
@@ -118,7 +118,7 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
               <button
                 onClick={() => setForm((f) => ({ ...f, color: undefined }))}
                 className={`w-8 h-8 rounded-full border-2 bg-gradient-to-br from-gray-300 to-gray-500 transition-all hover:scale-110 ${
-                  !form.color ? "border-indigo-500 ring-2 ring-indigo-300" : "border-transparent"
+                  !form.color ? "border-amber-600 ring-2 ring-amber-300" : "border-transparent"
                 }`}
                 title="自動（隨機）"
               />
@@ -127,7 +127,7 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
                   key={c.value}
                   onClick={() => setForm((f) => ({ ...f, color: c.value }))}
                   className={`w-8 h-8 rounded-full border-2 ${c.bg} transition-all hover:scale-110 ${
-                    form.color === c.value ? "border-indigo-500 ring-2 ring-indigo-300" : "border-transparent"
+                    form.color === c.value ? "border-amber-600 ring-2 ring-amber-300" : "border-transparent"
                   }`}
                   title={c.label}
                 />
@@ -144,7 +144,7 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
             </div>
             <button
               onClick={() => setForm((f) => ({ ...f, pinned: !f.pinned }))}
-              className={`relative w-10 h-6 rounded-full transition-colors ${form.pinned ? "bg-indigo-500" : "bg-muted"}`}
+              className={`relative w-10 h-6 rounded-full transition-colors ${form.pinned ? "bg-amber-700" : "bg-muted"}`}
             >
               <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.pinned ? "translate-x-5" : "translate-x-1"}`} />
             </button>
