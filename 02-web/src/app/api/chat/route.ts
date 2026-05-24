@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { prompt, systemPrompt, project, group } = await req.json()
+  const { prompt, systemPrompt, project, group, provider: requestedProvider } = await req.json()
   const token = process.env.PROXY_TOKEN
 
   if (!token) {
@@ -97,9 +97,15 @@ export async function POST(req: NextRequest) {
     ? `[System]\n${systemPrompt}\n\n[User]\n${prompt}`
     : prompt
 
+  // If a specific provider is requested, use only that one (no fallback)
+  const isSpecificProvider = requestedProvider && PROVIDER_ORDER.includes(requestedProvider as Provider)
+  const providers: Provider[] = isSpecificProvider
+    ? [requestedProvider as Provider]
+    : [...PROVIDER_ORDER]
+
   try {
-    // Try each provider in order: gemini → openai → claude
-    for (const provider of PROVIDER_ORDER) {
+    // Try providers in order
+    for (const provider of providers) {
       const streamRes = await tryStreamWithProvider(
         fullPrompt, resolvedProject, group || "chat", provider, token,
       )
@@ -113,12 +119,13 @@ export async function POST(req: NextRequest) {
           },
         })
       }
-      // null → provider unavailable, try next
+      // null → provider unavailable, try next (only relevant for auto mode)
     }
 
-    // All streaming failed — try REST with claude as last resort
+    // All streaming failed — try REST with last provider as last resort
+    const fallbackProvider: Provider = isSpecificProvider ? (requestedProvider as Provider) : "claude"
     const rest = await tryRestWithProvider(
-      fullPrompt, resolvedProject, group || "chat", "claude", token,
+      fullPrompt, resolvedProject, group || "chat", fallbackProvider, token,
     )
     if (rest) {
       const sseBody = `data: ${JSON.stringify({ delta: rest.delta, done: true, actual_provider: rest.actual_provider, actual_model: rest.actual_model })}\n\n`

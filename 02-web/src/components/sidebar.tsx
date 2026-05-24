@@ -1,21 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useAppStore } from "@/lib/store"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   Bot,
   MessageSquare,
-  Plus,
   Settings,
   Sun,
   Moon,
   Store,
   ChevronLeft,
   ChevronRight,
-  Trash2,
   Shield,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -65,19 +62,12 @@ export function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
   const {
-    conversations,
-    agents,
-    activeConversationId,
     sidebarOpen,
     theme,
-    setActiveConversation,
-    addConversation,
-    deleteConversation,
     toggleTheme,
     toggleSidebar,
   } = useAppStore()
 
-  const [hoveredConv, setHoveredConv] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
@@ -86,19 +76,6 @@ export function Sidebar() {
       .then((d) => { if (d.role === "admin") setIsAdmin(true) })
       .catch(() => {})
   }, [])
-
-  const handleNewChat = () => {
-    const defaultAgent = agents[0]
-    if (!defaultAgent) return
-    const conv = addConversation(defaultAgent.id)
-    setActiveConversation(conv.id)
-    router.push(`/chat/${conv.id}`)
-  }
-
-  const handleSelectConv = (id: string) => {
-    setActiveConversation(id)
-    router.push(`/chat/${id}`)
-  }
 
   const navItems = [
     { icon: MessageSquare, label: "對話", href: "/chat", active: pathname.startsWith("/chat") },
@@ -150,55 +127,8 @@ export function Sidebar() {
         ))}
       </div>
 
-      {/* New Chat Button */}
-      {sidebarOpen && (
-        <div className="px-2 pb-2">
-          <button
-            onClick={handleNewChat}
-            className="w-full flex items-center justify-center gap-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 text-sm transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            新對話
-          </button>
-        </div>
-      )}
-
-      {/* Conversation List */}
-      {sidebarOpen && (
-        <ScrollArea className="flex-1 px-2">
-          <div className="space-y-0.5 py-1">
-            {conversations.map((conv) => {
-              const agent = agents.find((a) => a.id === conv.agentId)
-              return (
-                <div
-                  key={conv.id}
-                  className={cn(
-                    "group flex items-center gap-2 rounded-lg px-2 py-2 text-sm cursor-pointer hover:bg-muted transition-colors",
-                    activeConversationId === conv.id && "bg-muted"
-                  )}
-                  onClick={() => handleSelectConv(conv.id)}
-                  onMouseEnter={() => setHoveredConv(conv.id)}
-                  onMouseLeave={() => setHoveredConv(null)}
-                >
-                  <span className="text-base shrink-0">{agent?.avatar || "🤖"}</span>
-                  <span className="flex-1 truncate text-xs text-muted-foreground">{conv.title}</span>
-                  {hoveredConv === conv.id && (
-                    <button
-                      className="opacity-0 group-hover:opacity-100 shrink-0 p-0.5 rounded hover:bg-muted-foreground/20"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        deleteConversation(conv.id)
-                      }}
-                    >
-                      <Trash2 className="w-3 h-3 text-muted-foreground" />
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </ScrollArea>
-      )}
+      {/* Spacer */}
+      <div className="flex-1" />
 
       {/* Bottom Actions */}
       <div className="border-t px-2 py-2 space-y-0.5 mt-auto">

@@ -17,6 +17,7 @@ interface AppState {
   addConversation: (agentId: string) => Conversation
   addMessage: (conversationId: string, message: Omit<Message, "id" | "createdAt">, saveToDb?: boolean) => Message
   updateLastMessage: (conversationId: string, content: string) => void
+  removeLastAssistantMessage: (conversationId: string) => void
   deleteConversation: (id: string) => void
   saveAgent: (agent: Agent) => void
   deleteAgent: (id: string) => void
@@ -122,6 +123,20 @@ export const useAppStore = create<AppState>()(
             const last = msgs[msgs.length - 1]
             if (last && last.role === "assistant") {
               msgs[msgs.length - 1] = { ...last, content }
+            }
+            return { ...conv, messages: msgs, updatedAt: new Date().toISOString() }
+          }),
+        }))
+      },
+
+      removeLastAssistantMessage: (conversationId) => {
+        set((state) => ({
+          conversations: state.conversations.map((conv) => {
+            if (conv.id !== conversationId) return conv
+            const msgs = [...conv.messages]
+            const last = msgs[msgs.length - 1]
+            if (last && last.role === "assistant") {
+              msgs.pop()
             }
             return { ...conv, messages: msgs, updatedAt: new Date().toISOString() }
           }),

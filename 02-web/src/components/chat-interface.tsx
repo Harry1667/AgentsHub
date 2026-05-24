@@ -5,11 +5,20 @@ import { useAppStore } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Send, User, Sparkles, Plus, AlertCircle } from "lucide-react"
+import { Send, User, Sparkles, Plus, AlertCircle, Copy, Check, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+
+type ProviderOption = "auto" | "gemini" | "openai" | "claude"
+
+const PROVIDER_OPTIONS: { value: ProviderOption; label: string }[] = [
+  { value: "auto", label: "自動" },
+  { value: "gemini", label: "Gemini" },
+  { value: "openai", label: "GPT-4o" },
+  { value: "claude", label: "Claude" },
+]
 
 async function* readSSEStream(response: Response): AsyncGenerator<{
   delta?: string
@@ -60,6 +69,35 @@ function parseProviderSuffix(content: string) {
   return { text: content, provider: null, model: null }
 }
 
+function CodeBlock({ children }: { children: React.ReactNode }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    const text = typeof children === "string" ? children : String(children)
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div className="relative group/code my-2">
+      <code className="block bg-black/10 dark:bg-white/10 rounded-lg px-3 py-2 text-xs font-mono overflow-x-auto whitespace-pre">
+        {children}
+      </code>
+      <button
+        onClick={handleCopy}
+        className="absolute top-1.5 right-1.5 p-1 rounded opacity-0 group-hover/code:opacity-100 transition-opacity bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20"
+        title="複製程式碼"
+      >
+        {copied
+          ? <Check className="w-3 h-3 text-green-500" />
+          : <Copy className="w-3 h-3 text-muted-foreground" />}
+      </button>
+    </div>
+  )
+}
+
 function AssistantMarkdown({ content }: { content: string }) {
   const { text, provider, model } = parseProviderSuffix(content)
   return (
@@ -84,9 +122,7 @@ function AssistantMarkdown({ content }: { content: string }) {
           code: ({ children, className }) => {
             const isBlock = className?.startsWith("language-")
             return isBlock ? (
-              <code className="block bg-black/10 dark:bg-white/10 rounded-lg px-3 py-2 my-2 text-xs font-mono overflow-x-auto whitespace-pre">
-                {children}
-              </code>
+              <CodeBlock>{children}</CodeBlock>
             ) : (
               <code className="bg-black/10 dark:bg-white/10 rounded px-1 py-0.5 text-xs font-mono">
                 {children}
@@ -108,15 +144,61 @@ function AssistantMarkdown({ content }: { content: string }) {
   )
 }
 
-function MessageBubble({ role, content, avatar }: { role: "user" | "assistant"; content: string; avatar?: string }) {
+function MessageBubble({
+  role,
+  content,
+  avatar,
+  isLast,
+  onRegenerate,
+}: {
+  role: "user" | "assistant"
+  content: string
+  avatar?: string
+  isLast?: boolean
+  onRegenerate?: () => void
+}) {
   const isUser = role === "user"
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    const { text } = parseProviderSuffix(content)
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
   return (
     <div className={cn("flex gap-3 py-2", isUser && "flex-row-reverse")}>
       <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm", isUser ? "bg-indigo-500 text-white" : "bg-indigo-100 dark:bg-indigo-900")}>
         {isUser ? <User className="w-4 h-4" /> : <span>{avatar || "🤖"}</span>}
       </div>
-      <div className={cn("max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed break-words", isUser ? "bg-indigo-500 text-white rounded-tr-sm whitespace-pre-wrap" : "bg-muted rounded-tl-sm")}>
-        {isUser ? content : <AssistantMarkdown content={content} />}
+      <div className="flex flex-col gap-1 max-w-[70%]">
+        <div className={cn("relative group/msg rounded-2xl px-4 py-3 text-sm leading-relaxed break-words", isUser ? "bg-indigo-500 text-white rounded-tr-sm whitespace-pre-wrap" : "bg-muted rounded-tl-sm")}>
+          {isUser ? content : <AssistantMarkdown content={content} />}
+          {!isUser && (
+            <button
+              onClick={handleCopy}
+              className="absolute top-2 right-2 p-1 rounded opacity-0 group-hover/msg:opacity-100 transition-opacity hover:bg-black/10 dark:hover:bg-white/10"
+              title="複製訊息"
+            >
+              {copied
+                ? <Check className="w-3.5 h-3.5 text-green-500" />
+                : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+            </button>
+          )}
+        </div>
+        {!isUser && isLast && onRegenerate && (
+          <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity pl-1">
+            <button
+              onClick={onRegenerate}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" />
+              重新生成
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -128,10 +210,11 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const router = useRouter()
-  const { conversations, agents, addMessage, updateLastMessage, addConversation, setActiveConversation } = useAppStore()
+  const { conversations, agents, addMessage, updateLastMessage, removeLastAssistantMessage, addConversation, setActiveConversation } = useAppStore()
   const [input, setInput] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedProvider, setSelectedProvider] = useState<ProviderOption>("auto")
   const scrollRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -147,14 +230,19 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const callProxy = async (convId: string, userPrompt: string) => {
     abortRef.current = new AbortController()
 
+    const body: Record<string, string> = {
+      prompt: userPrompt,
+      systemPrompt: agent?.systemPrompt || "",
+      group: agent?.name || "chat",
+    }
+    if (selectedProvider !== "auto") {
+      body.provider = selectedProvider
+    }
+
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: userPrompt,
-        systemPrompt: agent?.systemPrompt || "",
-        group: agent?.name || "chat",
-      }),
+      body: JSON.stringify(body),
       signal: abortRef.current.signal,
     })
 
@@ -197,8 +285,8 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     }).catch(console.error)
   }
 
-  const handleSend = async () => {
-    const trimmed = input.trim()
+  const handleSend = async (promptOverride?: string) => {
+    const trimmed = (promptOverride ?? input).trim()
     if (!trimmed || isStreaming) return
 
     let convId = conversationId
@@ -211,13 +299,37 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       router.push(`/chat/${convId}`)
     }
 
-    addMessage(convId, { role: "user", content: trimmed }, true)
-    setInput("")
+    if (!promptOverride) {
+      addMessage(convId, { role: "user", content: trimmed }, true)
+      setInput("")
+    }
     setError(null)
     setIsStreaming(true)
 
     try {
       await callProxy(convId, trimmed)
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name !== "AbortError") setError(e.message)
+    } finally {
+      setIsStreaming(false)
+    }
+  }
+
+  const handleRegenerate = async () => {
+    if (!conversationId || !conversation || isStreaming) return
+    const msgs = conversation.messages
+    // Find last user message before the last assistant message
+    const lastAssistant = msgs[msgs.length - 1]
+    if (!lastAssistant || lastAssistant.role !== "assistant") return
+    const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user")
+    if (!lastUserMsg) return
+
+    removeLastAssistantMessage(conversationId)
+    setError(null)
+    setIsStreaming(true)
+
+    try {
+      await callProxy(conversationId, lastUserMsg.content)
     } catch (e: unknown) {
       if (e instanceof Error && e.name !== "AbortError") setError(e.message)
     } finally {
@@ -238,6 +350,10 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   }
 
   const isEmpty = !conversation || conversation.messages.length === 0
+
+  const messages = conversation?.messages ?? []
+  const lastMsg = messages[messages.length - 1]
+  const lastIsAssistant = lastMsg?.role === "assistant"
 
   return (
     <div className="flex flex-col h-full">
@@ -278,10 +394,17 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
             </div>
           ) : (
             <>
-              {conversation.messages.map((msg) => (
-                <MessageBubble key={msg.id} role={msg.role} content={msg.content} avatar={agent?.avatar} />
+              {messages.map((msg, idx) => (
+                <MessageBubble
+                  key={msg.id}
+                  role={msg.role}
+                  content={msg.content}
+                  avatar={agent?.avatar}
+                  isLast={idx === messages.length - 1}
+                  onRegenerate={idx === messages.length - 1 && lastIsAssistant && !isStreaming ? handleRegenerate : undefined}
+                />
               ))}
-              {isStreaming && conversation.messages[conversation.messages.length - 1]?.role === "user" && <TypingIndicator />}
+              {isStreaming && messages[messages.length - 1]?.role === "user" && <TypingIndicator />}
             </>
           )}
 
@@ -295,26 +418,45 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
       <div className="px-4 pb-4 shrink-0">
         <div className="max-w-3xl mx-auto">
-          <div className="relative flex items-end gap-2 rounded-2xl border bg-background shadow-sm px-4 py-3 focus-within:ring-2 focus-within:ring-indigo-300">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={isStreaming ? "AI 回應中..." : "輸入訊息… (Enter 送出，Shift+Enter 換行)"}
-              className="flex-1 border-0 shadow-none resize-none focus-visible:ring-0 min-h-[24px] max-h-[200px] p-0 text-sm"
-              rows={1}
-              disabled={isStreaming}
-            />
-            <Button
-              onClick={isStreaming ? () => abortRef.current?.abort() : handleSend}
-              size="icon"
-              className={cn("h-8 w-8 rounded-xl shrink-0", isStreaming ? "bg-red-500 hover:bg-red-600" : "bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40")}
-              disabled={!isStreaming && !input.trim()}
-            >
-              {isStreaming
-                ? <span className="w-3 h-3 rounded-sm bg-white" />
-                : <Send className="w-3.5 h-3.5 text-white" />}
-            </Button>
+          <div className="relative flex flex-col gap-2 rounded-2xl border bg-background shadow-sm px-4 py-3 focus-within:ring-2 focus-within:ring-indigo-300">
+            <div className="flex items-end gap-2">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={isStreaming ? "AI 回應中..." : "輸入訊息… (Enter 送出，Shift+Enter 換行)"}
+                className="flex-1 border-0 shadow-none resize-none focus-visible:ring-0 min-h-[24px] max-h-[200px] p-0 text-sm"
+                rows={1}
+                disabled={isStreaming}
+              />
+              <Button
+                onClick={isStreaming ? () => abortRef.current?.abort() : () => handleSend()}
+                size="icon"
+                className={cn("h-8 w-8 rounded-xl shrink-0", isStreaming ? "bg-red-500 hover:bg-red-600" : "bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40")}
+                disabled={!isStreaming && !input.trim()}
+              >
+                {isStreaming
+                  ? <span className="w-3 h-3 rounded-sm bg-white" />
+                  : <Send className="w-3.5 h-3.5 text-white" />}
+              </Button>
+            </div>
+            {/* Model selector chips */}
+            <div className="flex items-center gap-1.5">
+              {PROVIDER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setSelectedProvider(opt.value)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-full text-xs transition-colors",
+                    selectedProvider === opt.value
+                      ? "bg-indigo-500 text-white"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
