@@ -4,10 +4,18 @@ import { useAppStore } from "@/lib/store"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
-import { Trash2 } from "lucide-react"
+import { Trash2, LogOut } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useAppStore()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" })
+    router.push("/login")
+    router.refresh()
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -28,6 +36,16 @@ export default function SettingsPage() {
               </div>
               <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
             </div>
+          </section>
+
+          <Separator />
+
+          <section>
+            <h2 className="text-base font-semibold mb-4">帳號</h2>
+            <Button variant="outline" className="gap-2" onClick={handleLogout}>
+              <LogOut className="w-4 h-4" />
+              登出
+            </Button>
           </section>
 
           <Separator />

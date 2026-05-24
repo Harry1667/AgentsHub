@@ -1,5 +1,22 @@
 import { NextRequest, NextResponse } from "next/server"
 
+// In-memory rate limiter: 100 requests per hour per IP
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+const RATE_LIMIT = 100
+const RATE_WINDOW_MS = 60 * 60 * 1000
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS })
+    return true
+  }
+  if (entry.count >= RATE_LIMIT) return false
+  entry.count++
+  return true
+}
+
 const PROXY_BASE = process.env.PROXY_BASE_URL || "https://clip.twloop.com"
 const PROVIDER_ORDER = ["gemini", "openai", "claude"] as const
 type Provider = (typeof PROVIDER_ORDER)[number]
@@ -60,6 +77,14 @@ async function tryRestWithProvider(
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json(
+      { error: "請求過於頻繁，請稍後再試（每小時限 100 次）" },
+      { status: 429, headers: { "Retry-After": "3600" } },
+    )
+  }
+
   const { prompt, systemPrompt, project, group } = await req.json()
   const token = process.env.PROXY_TOKEN
 
