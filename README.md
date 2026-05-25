@@ -45,7 +45,7 @@
 | 狀態 | Zustand（含 localStorage 持久化） |
 | 資料庫 | MySQL，透過 Drizzle ORM + `mysql2` |
 | 內容 | react-markdown + remark-gfm、pdfjs-dist（PDF 抽文） |
-| AI | 透過 Proxy 服務（`clip.twloop.com`）統一存取多供應商（Gemini / OpenAI / Claude），自動回退 |
+| AI | 透過 Proxy 服務統一存取多供應商（Gemini / OpenAI / Claude），自動回退 |
 
 ---
 
@@ -115,7 +115,7 @@ npm run lint     # ESLint
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | 管理員登入帳密 |
 | `REGISTER_CODE` | 註冊邀請碼（留空則關閉註冊） |
 | `PROXY_TOKEN` | Proxy AI 服務的存取 token |
-| `PROXY_BASE_URL` | Proxy 端點，預設 `https://clip.twloop.com` |
+| `PROXY_BASE_URL` | Proxy 服務端點 URL |
 | `PROXY_PROJECT` | Proxy 專案代號，預設 `agent-hub` |
 
 ---
