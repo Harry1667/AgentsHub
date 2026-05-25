@@ -296,6 +296,12 @@ export default function ChatPage() {
               conversations={conversations}
               onOpenAgent={handleAgentClick}
               onOpenMeeting={() => { setPicking(false); setMeetingOpen(true) }}
+              onStartMeeting={(ids) => {
+                if (ids.length < 2) return
+                const conv = addConversation(ids[0], ids.slice(1))
+                setActiveConversation(conv.id)
+                router.push(`/chat/${conv.id}`)
+              }}
             />
             <p className="text-center text-xs text-muted-foreground mt-3">點小人開始對話 ・ 點地毯發起會議</p>
           </div>
