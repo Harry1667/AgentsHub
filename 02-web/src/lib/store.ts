@@ -52,7 +52,7 @@ export const useAppStore = create<AppState>()(
       conversations: [],
       activeConversationId: null,
       activeAgentId: null,
-      theme: "light",
+      theme: "dark",
       sidebarOpen: true,
       isLoaded: false,
       defaultModel: "",

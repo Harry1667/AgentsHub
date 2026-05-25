@@ -44,25 +44,38 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
   const { saveAgent } = useAppStore()
   usePageTitle(existingAgent ? "編輯 Agent" : "建立 Agent")
 
-  const [form, setForm] = useState<Omit<Agent, "createdAt" | "useCount" | "isDefault">>({
-    id: existingAgent?.id || `agent-${Date.now()}`,
-    name: existingAgent?.name || "",
-    avatar: existingAgent?.avatar || "🤖",
-    description: existingAgent?.description || "",
-    systemPrompt: existingAgent?.systemPrompt || "",
-    model: existingAgent?.model || "claude-sonnet-4-6",
-    temperature: existingAgent?.temperature ?? 0.7,
-    maxTokens: existingAgent?.maxTokens || 2048,
-    tags: existingAgent?.tags || [],
-    pinned: existingAgent?.pinned ?? false,
-    color: existingAgent?.color,
+  // 新建時讀取「Agent 建構師」暫存的草稿（client 端導航，無 SSR hydration 問題）
+  const [form, setForm] = useState<Omit<Agent, "id" | "createdAt" | "useCount" | "isDefault">>(() => {
+    const base = {
+      name: existingAgent?.name || "",
+      avatar: existingAgent?.avatar || "🤖",
+      description: existingAgent?.description || "",
+      systemPrompt: existingAgent?.systemPrompt || "",
+      model: existingAgent?.model || "claude-sonnet-4-6",
+      temperature: existingAgent?.temperature ?? 0.7,
+      maxTokens: existingAgent?.maxTokens || 2048,
+      tags: existingAgent?.tags || [],
+      pinned: existingAgent?.pinned ?? false,
+      color: existingAgent?.color,
+    }
+    if (!existingAgent && typeof window !== "undefined") {
+      try {
+        const raw = sessionStorage.getItem("agent-draft")
+        if (raw) {
+          sessionStorage.removeItem("agent-draft")
+          Object.assign(base, JSON.parse(raw))
+        }
+      } catch { /* ignore */ }
+    }
+    return base
   })
 
   const [tagInput, setTagInput] = useState("")
 
   const handleSave = () => {
     if (!form.name.trim()) return
-    saveAgent({ ...form, createdAt: existingAgent?.createdAt || new Date().toISOString() })
+    const id = existingAgent?.id || `agent-${Date.now()}`
+    saveAgent({ ...form, id, createdAt: existingAgent?.createdAt || new Date().toISOString() })
     router.push("/agents")
   }
 

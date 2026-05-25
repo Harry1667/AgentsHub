@@ -184,6 +184,31 @@ function MeetingRoomCard({ count, onClick }: { count: number; onClick: () => voi
   )
 }
 
+// 招募卡 — 工位區的「徵新同事」入口，點擊進 AI 建構師
+function RecruitCard({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="group text-left rounded-2xl overflow-hidden border-2 border-dashed border-amber-300/70 hover:border-amber-400 hover:shadow-xl transition-all duration-200 hover:-translate-y-1 cursor-pointer w-full relative"
+    >
+      <div className="relative h-28 flex items-center justify-center overflow-hidden bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900">
+        <span className="absolute top-2 left-3 text-lg opacity-30 rotate-[-12deg] select-none">🪄</span>
+        <span className="absolute bottom-3 right-3 text-base opacity-25 rotate-[8deg] select-none">✨</span>
+        <span className="text-4xl group-hover:scale-110 transition-transform duration-200 select-none drop-shadow-sm z-10">🛠️</span>
+      </div>
+      <div className="h-1.5 bg-amber-300 dark:bg-amber-800" />
+      <div className="px-4 py-3 bg-amber-50/60 dark:bg-amber-950/40">
+        <h3 className="font-semibold text-sm leading-snug truncate">徵新同事</h3>
+        <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">跟 AI 建構師聊聊，打造專屬助手</p>
+        <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/10 flex items-center gap-1.5">
+          <span className="text-[10px]">🪄</span>
+          <span className="text-[10px] text-muted-foreground">點擊開始建構</span>
+        </div>
+      </div>
+    </button>
+  )
+}
+
 export default function ChatPage() {
   const router = useRouter()
   const { agents, conversations, addConversation, setActiveConversation, isLoaded, togglePinAgent, workspaceView, setWorkspaceView, onboarded, setOnboarded } = useAppStore()
@@ -302,6 +327,7 @@ export default function ChatPage() {
                 setActiveConversation(conv.id)
                 router.push(`/chat/${conv.id}`)
               }}
+              onRecruit={() => router.push("/agents/build")}
             />
             <p className="text-center text-xs text-muted-foreground mt-3">點小人開始對話 ・ 點地毯發起會議</p>
           </div>
@@ -309,6 +335,7 @@ export default function ChatPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {/* 會議室固定在最前 */}
             <MeetingRoomCard count={meetings.length} onClick={() => { setPicking(false); setMeetingOpen(true) }} />
+            <RecruitCard onClick={() => router.push("/agents/build")} />
             {sortedAgents.map((agent, index) => {
               const convCount = conversations.filter((c) => c.agentId === agent.id && !isMeetingConv(c)).length
               return (

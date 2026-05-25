@@ -346,7 +346,7 @@ function MessageBubble({
                       <Input
                         value={rwInstruction}
                         onChange={(e) => setRwInstruction(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter" && !rwLoading) runRewrite() }}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !rwLoading && !(e.nativeEvent as { isComposing?: boolean }).isComposing) runRewrite() }}
                         placeholder="選填指示：更簡潔 / 更正式 / 翻成英文…"
                         className="h-8 text-xs"
                         disabled={rwLoading}
@@ -878,7 +878,10 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend() }
+    // 拼音/注音等輸入法組字中（選字階段）按 Enter 不送出
+    if (e.key === "Enter" && !e.shiftKey && !(e.nativeEvent as { isComposing?: boolean }).isComposing) {
+      e.preventDefault(); handleSend()
+    }
   }
 
   const isEmpty = !conversation || conversation.messages.length === 0

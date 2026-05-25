@@ -48,6 +48,17 @@ const MEETING_ZONE = { x: 168, y: 96, w: 76, h: 56 }
 // 工作中聚集（桌子附近）、閒置聚集（沙發附近）
 const DESK_ZONE = { x: 50, y: 66, w: 70, h: 30 }
 const REST_ZONE = { x: 192, y: 58, w: 48, h: 28 }
+// 牆上「徵人」公告板 — 點擊進 AI 建構師
+const RECRUIT_ZONE = { x: 198, y: 6, w: 56, h: 24 }
+
+// 小人隨機行為的頭上氣泡（依狀態挑不同情緒）
+const ACTIONS_WORKING = ["💬", "☕", "⌨️", "📊", "💡", "📞"]
+const ACTIONS_ACTIVE = ["💬", "☕", "🎵", "👀", "✨", "📖"]
+const ACTIONS_IDLE = ["💤", "☕", "🎵", null, null]
+function pickAction(b: Behavior): string | null {
+  const pool = b === "working" ? ACTIONS_WORKING : b === "idle" ? ACTIONS_IDLE : ACTIONS_ACTIVE
+  return pool[Math.floor(Math.random() * pool.length)]
+}
 
 interface Walker {
   agent: Agent
@@ -62,6 +73,9 @@ interface Walker {
   behavior: Behavior
   dragging: boolean
   bob: number
+  actionEmoji: string | null  // 停下時頭上的行為氣泡（喝咖啡/聽音樂/靈感…）
+  chatting: boolean           // 與鄰座靠近時「聊天中」
+  fresh: boolean              // 從未對話過的新同事（清醒待命、不變淡）
 }
 
 function rand(a: number, b: number) { return a + Math.random() * (b - a) }
@@ -80,9 +94,10 @@ interface OfficeViewProps {
   onOpenAgent: (a: Agent) => void
   onOpenMeeting: () => void
   onStartMeeting: (agentIds: string[]) => void
+  onRecruit: () => void
 }
 
-export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, onStartMeeting }: OfficeViewProps) {
+export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, onStartMeeting, onRecruit }: OfficeViewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const walkersRef = useRef<Walker[]>([])
   const hoverRef = useRef<Walker | null>(null)
@@ -90,8 +105,8 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
   const stagedRef = useRef<string[]>([])         // 進入會議室待組會的 agentId（有序）
   const downRef = useRef<{ walker: Walker | null; moved: boolean } | null>(null)
   const [stagedIds, setStagedIds] = useState<string[]>([])
-  const cbRef = useRef({ onOpenAgent, onOpenMeeting, onStartMeeting })
-  cbRef.current = { onOpenAgent, onOpenMeeting, onStartMeeting }
+  const cbRef = useRef({ onOpenAgent, onOpenMeeting, onStartMeeting, onRecruit })
+  useEffect(() => { cbRef.current = { onOpenAgent, onOpenMeeting, onStartMeeting, onRecruit } })
 
   // 每個 agent 最後活躍時間
   const lastActive = (() => {
@@ -131,6 +146,7 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
         tx: t.x, ty: t.y, dir: "down", moving: true,
         frame: 0, frameTimer: 0, pause: rand(0, 2),
         behavior, dragging: false, bob: Math.random() * Math.PI * 2,
+        actionEmoji: null, chatting: false, fresh: la === 0,
       }
     })
 
@@ -162,15 +178,33 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
         if (dist < 2) {
           w.moving = false
           w.pause = w.behavior === "idle" ? rand(2.5, 6) : rand(1, 3.5)
+          w.actionEmoji = pickAction(w.fresh ? "active" : w.behavior)  // 抵達定點 → 隨機做點事（新人保持清醒）
           const t = targetFor(w.behavior); w.tx = t.x; w.ty = t.y
         } else {
           w.moving = true
+          w.actionEmoji = null  // 走動時不冒氣泡
           const speed = w.behavior === "idle" ? WALK_SPEED * 0.6 : WALK_SPEED
           const step = Math.min(dist, speed * dt)
           w.x += dx / dist * step; w.y += dy / dist * step
           if (Math.abs(dx) > Math.abs(dy)) w.dir = dx > 0 ? "right" : "left"
           else w.dir = dy > 0 ? "down" : "up"
           w.frameTimer += dt; if (w.frameTimer >= FRAME_DUR) { w.frameTimer = 0; w.frame = (w.frame + 1) % WALK_FRAMES.length }
+        }
+      }
+
+      // ── 鄰座聊天：兩個都停下且靠近 → 互相面對、冒對話泡 ──
+      const ws = walkersRef.current
+      for (const w of ws) w.chatting = false
+      for (let i = 0; i < ws.length; i++) {
+        for (let j = i + 1; j < ws.length; j++) {
+          const a = ws[i], b = ws[j]
+          if (a.moving || b.moving || a.dragging || b.dragging) continue
+          if (staged.includes(a.agent.id) || staged.includes(b.agent.id)) continue
+          if (Math.hypot(a.x - b.x, a.y - b.y) < 22) {
+            a.chatting = b.chatting = true
+            a.dir = a.x <= b.x ? "right" : "left"
+            b.dir = b.x < a.x ? "right" : "left"
+          }
         }
       }
 
@@ -193,6 +227,17 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
       ctx.fillStyle = "rgba(79,70,229,0.9)"; ctx.font = "7px sans-serif"; ctx.textAlign = "center"
       ctx.fillText("🏛 會議室", mz.x + mz.w / 2, mz.y + 10)
 
+      // 牆上「徵人」公告板
+      const rz = RECRUIT_ZONE
+      ctx.fillStyle = "rgba(180,83,9,0.92)"
+      ctx.fillRect(rz.x, rz.y, rz.w, rz.h)
+      ctx.strokeStyle = "rgba(120,53,15,0.95)"; ctx.lineWidth = 1
+      ctx.strokeRect(rz.x + 0.5, rz.y + 0.5, rz.w - 1, rz.h - 1)
+      ctx.fillStyle = "#fff"; ctx.font = "bold 7px sans-serif"; ctx.textAlign = "center"
+      ctx.fillText("＋ 徵新同事", rz.x + rz.w / 2, rz.y + 10)
+      ctx.font = "6px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.85)"
+      ctx.fillText("點我用 AI 建構", rz.x + rz.w / 2, rz.y + 19)
+
       type Drawable = { baseY: number; draw: () => void }
       const items: Drawable[] = []
       for (const f of FURNITURE) {
@@ -208,7 +253,8 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
             const drawX = Math.round(w.x - CHAR_W / 2)
             const bobY = w.moving ? Math.round(Math.sin(w.bob * 2) * 0.6) : Math.round(Math.sin(w.bob) * 0.6)
             const drawY = Math.round(w.y - CHAR_H) + bobY
-            const dim = w.behavior === "idle" && !isStaged && !w.dragging
+            // 只有「曾經活躍但已沉寂」才變淡；剛報到、從未對話過的新人保持清醒不透明
+            const dim = w.behavior === "idle" && !w.fresh && !isStaged && !w.dragging
 
             // 光暈：staged 紫、working 綠、active 金
             const glow = isStaged ? "rgba(99,102,241,0.5)" : w.behavior === "working" ? "rgba(80,200,120,0.4)" : w.behavior === "active" ? "rgba(245,200,90,0.32)" : null
@@ -231,7 +277,8 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
             // 頭上：emoji 徽章 + 狀態氣泡
             ctx.font = "9px sans-serif"; ctx.textAlign = "center"
             ctx.fillText(w.agent.avatar, w.x, drawY - 1)
-            const bubble = isStaged ? null : w.behavior === "working" ? "💬" : w.behavior === "idle" ? "💤" : null
+            // 聊天中優先冒 💬，否則顯示停下時的隨機行為氣泡
+            const bubble = isStaged ? null : w.chatting ? "💬" : (!w.moving ? w.actionEmoji : null)
             if (bubble) { ctx.font = "8px sans-serif"; ctx.fillText(bubble, w.x + 9, drawY + 2) }
           },
         })
@@ -292,8 +339,8 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
             d.walker.y = Math.max(40, Math.min(WORLD_H - 6, y))
           }
           hoverRef.current = d?.walker ? null : pick(x, y)
-          const inMeeting = inZone(x, y, MEETING_ZONE)
-          canvasRef.current!.style.cursor = d?.walker ? "grabbing" : (hoverRef.current ? "grab" : inMeeting ? "pointer" : "default")
+          const inClickable = inZone(x, y, MEETING_ZONE) || inZone(x, y, RECRUIT_ZONE)
+          canvasRef.current!.style.cursor = d?.walker ? "grabbing" : (hoverRef.current ? "grab" : inClickable ? "pointer" : "default")
         }}
         onMouseUp={(e) => {
           const { x, y } = toWorld(e)
@@ -314,6 +361,8 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
             } else {
               cbRef.current.onOpenAgent(d.walker.agent) // 純點擊
             }
+          } else if (inZone(x, y, RECRUIT_ZONE)) {
+            cbRef.current.onRecruit()
           } else if (inZone(x, y, MEETING_ZONE)) {
             cbRef.current.onOpenMeeting()
           }
@@ -346,8 +395,10 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
       <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-[11px] text-muted-foreground">
         <span>🟢 工作中(近1h)</span>
         <span>🟡 活躍(7天內)</span>
-        <span>😴 閒置</span>
+        <span>😴 閒置(7天沒碰會變淡)</span>
+        <span>✨ 新同事(清醒待命)</span>
         <span>・拖小人進會議室地毯可組會議</span>
+        <span>・點牆上「徵人」板新增 Agent</span>
       </div>
     </div>
   )

@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useAppStore } from "@/lib/store"
-import { Conversation } from "@/lib/types"
+import { Conversation, BUILDER_AGENT_ID } from "@/lib/types"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Bot,
   MessageSquare,
@@ -16,6 +18,7 @@ import {
   Shield,
   Plus,
   Trash2,
+  Wand2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -82,6 +85,7 @@ export function Sidebar({
   } = useAppStore()
 
   const [isAdmin, setIsAdmin] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
@@ -96,10 +100,11 @@ export function Sidebar({
     { icon: Bot, label: "我的 Agent", href: "/agents", active: pathname.startsWith("/agents") },
   ]
 
-  // 跨 agent 最近對話（含會議），依更新時間排序
-  const recent = [...conversations]
+  // 跨 agent 最近對話（含會議），依更新時間排序；排除建構師討論（另外列）
+  const sortedConvs = [...conversations]
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 20)
+  const recent = sortedConvs.filter((c) => c.agentId !== BUILDER_AGENT_ID).slice(0, 20)
+  const builderConvs = sortedConvs.filter((c) => c.agentId === BUILDER_AGENT_ID).slice(0, 10)
 
   const isMeeting = (c: Conversation) => (c.participantIds?.length ?? 1) > 1
   const convIcon = (c: Conversation) => {
@@ -112,13 +117,16 @@ export function Sidebar({
 
   const openConv = (id: string) => { setActiveConversation(id); go(`/chat/${id}`) }
 
+  // 新對話：先讓使用者挑 agent（沒有 agent 才導去建立頁）
   const handleNewChat = () => {
-    // 用最近對話的 agent；否則第一個 agent；都沒有就去建立
-    const lastAgentId = recent[0]?.agentId
-    const agent = agents.find((a) => a.id === lastAgentId) ?? agents[0]
-    if (!agent) { go("/agents"); return }
-    const conv = addConversation(agent.id)
+    if (agents.length === 0) { go("/agents"); return }
+    setShowPicker(true)
+  }
+
+  const startChatWith = (agentId: string) => {
+    const conv = addConversation(agentId)
     setActiveConversation(conv.id)
+    setShowPicker(false)
     go(`/chat/${conv.id}`)
   }
 
@@ -213,6 +221,37 @@ export function Sidebar({
               ))}
             </div>
           )}
+
+          {/* 建構紀錄（與建構師的討論，獨立於對話列表） */}
+          {builderConvs.length > 0 && (
+            <>
+              <p className="text-[11px] font-medium text-muted-foreground px-2 py-1.5 mt-2 flex items-center gap-1">
+                <Wand2 className="w-3 h-3" />建構紀錄
+              </p>
+              <div className="space-y-0.5 pb-2">
+                {builderConvs.map((c) => (
+                  <div
+                    key={c.id}
+                    className={cn(
+                      "group/conv flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm cursor-pointer transition-colors hover:bg-muted",
+                      activeConversationId === c.id && pathname.startsWith("/agents/build") && "bg-muted"
+                    )}
+                    onClick={() => { setActiveConversation(c.id); go(`/agents/build/${c.id}`) }}
+                  >
+                    <span className="text-sm shrink-0 w-5 text-center">🛠️</span>
+                    <span className="flex-1 truncate text-foreground/90">{c.title.replace(/^🛠️\s*/, "")}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteConversation(c.id) }}
+                      className="opacity-0 group-hover/conv:opacity-100 transition-opacity p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 shrink-0"
+                      title="刪除"
+                    >
+                      <Trash2 className="w-3 h-3 text-muted-foreground" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <div className="flex-1" />
@@ -243,6 +282,35 @@ export function Sidebar({
           />
         )}
       </div>
+
+      {/* 新對話：選擇 agent */}
+      <Dialog open={showPicker} onOpenChange={setShowPicker}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-4 h-4" />開啟新對話
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-2">選一位 Agent 開始新的對話。</p>
+          <ScrollArea className="max-h-80">
+            <div className="space-y-1 pr-2">
+              {agents.map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => startChatWith(a.id)}
+                  className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm hover:bg-muted transition-colors text-left"
+                >
+                  <span className="text-2xl shrink-0">{a.avatar}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-medium truncate">{a.name}</span>
+                    <span className="block text-xs text-muted-foreground truncate">{a.description}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

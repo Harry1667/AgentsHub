@@ -14,6 +14,9 @@ node_modules/
 .next/
 out/
 build/
+# 例外：App Router 的 /agents/build 路由（是原始碼，不是建置產物）
+!02-web/src/app/**/agents/build/
+!02-web/src/app/**/agents/build/**
 
 # TypeScript
 *.tsbuildinfo

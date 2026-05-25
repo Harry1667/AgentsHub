@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Plus, Edit2, Trash2, MessageSquare, LayoutTemplate } from "lucide-react"
+import { Plus, Edit2, Trash2, MessageSquare, LayoutTemplate, Wand2 } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 
 export default function AgentsPage() {
@@ -37,12 +37,16 @@ export default function AgentsPage() {
               <LayoutTemplate className="w-4 h-4" />
               從範本新增
             </Button>
+            <Button variant="outline" className="gap-2" onClick={() => router.push("/agents/new")}>
+              <Plus className="w-4 h-4" />
+              手動建立
+            </Button>
             <Button
               className="gap-2 bg-amber-700 hover:bg-amber-800 text-white"
-              onClick={() => router.push("/agents/new")}
+              onClick={() => router.push("/agents/build")}
             >
-              <Plus className="w-4 h-4" />
-              建立 Agent
+              <Wand2 className="w-4 h-4" />
+              AI 建構師
             </Button>
           </div>
         }

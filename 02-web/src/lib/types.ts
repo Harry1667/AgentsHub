@@ -1,3 +1,7 @@
+// 建構師對話的哨兵 agentId：用來把「Agent 建構師」的討論與一般對話區隔，
+// 不污染最近對話列表（免動 DB schema）。
+export const BUILDER_AGENT_ID = "__builder__"
+
 export interface Agent {
   id: string
   name: string
