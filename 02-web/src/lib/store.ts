@@ -17,6 +17,7 @@ interface AppState {
   addConversation: (agentId: string, participantIds?: string[]) => Conversation
   addMessage: (conversationId: string, message: Omit<Message, "id" | "createdAt">, saveToDb?: boolean) => Message
   updateLastMessage: (conversationId: string, content: string) => void
+  updateMessageContent: (conversationId: string, messageId: string, content: string) => void
   removeLastAssistantMessage: (conversationId: string) => void
   deleteConversation: (id: string) => void
   renameConversation: (id: string, title: string) => void
@@ -144,6 +145,26 @@ export const useAppStore = create<AppState>()(
             return { ...conv, messages: msgs, updatedAt: new Date().toISOString() }
           }),
         }))
+      },
+
+      updateMessageContent: (conversationId, messageId, content) => {
+        set((state) => ({
+          conversations: state.conversations.map((conv) => {
+            if (conv.id !== conversationId) return conv
+            return {
+              ...conv,
+              messages: conv.messages.map((m) =>
+                m.id === messageId ? { ...m, content } : m
+              ),
+              updatedAt: new Date().toISOString(),
+            }
+          }),
+        }))
+        // 持久化：覆寫該訊息內容
+        api("/api/messages", {
+          method: "PATCH",
+          body: JSON.stringify({ id: messageId, content }),
+        })
       },
 
       removeLastAssistantMessage: (conversationId) => {

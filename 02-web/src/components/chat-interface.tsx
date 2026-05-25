@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import {
   Send, User, Sparkles, Plus, AlertCircle, Copy, Check, RefreshCw,
-  Bookmark, BookmarkCheck, Download, Settings, Pencil, Users, X, AtSign, ArrowLeft,
+  Bookmark, BookmarkCheck, Download, Settings, Pencil, Users, X, AtSign, ArrowLeft, Wand2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
@@ -24,14 +24,26 @@ import { usePageTitle } from "@/components/page-header"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
-type ProviderOption = "auto" | "gemini" | "openai" | "claude"
+type Provider = "gemini" | "openai" | "claude"
 
-const PROVIDER_OPTIONS: { value: ProviderOption; label: string }[] = [
-  { value: "auto", label: "自動" },
-  { value: "gemini", label: "Gemini" },
-  { value: "openai", label: "GPT-4o" },
-  { value: "claude", label: "Claude" },
+// 對話內可選模型；value="auto" 代表不指定 model、走跨供應商自動回退
+const MODEL_OPTIONS: { value: string; label: string; provider?: Provider }[] = [
+  { value: "auto", label: "自動（跨供應商）" },
+  { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5（快速）", provider: "claude" },
+  { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6（均衡）", provider: "claude" },
+  { value: "claude-opus-4-7", label: "Claude Opus 4.7（最強）", provider: "claude" },
+  { value: "gpt-4o-mini", label: "GPT-4o Mini", provider: "openai" },
+  { value: "gpt-4o", label: "GPT-4o", provider: "openai" },
+  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "gemini" },
 ]
+
+// 由 model 字串推導供應商（選具體 model 時 pin provider，避免 auto 下他家先回）
+function providerFromModel(model: string): Provider | undefined {
+  if (model.startsWith("claude")) return "claude"
+  if (model.startsWith("gpt")) return "openai"
+  if (model.startsWith("gemini")) return "gemini"
+  return undefined
+}
 
 async function* readSSEStream(response: Response): AsyncGenerator<{
   delta?: string
@@ -111,50 +123,54 @@ function CodeBlock({ children }: { children: React.ReactNode }) {
   )
 }
 
-function AssistantMarkdown({ content }: { content: string }) {
-  const { text, provider, model } = parseProviderSuffix(content)
+// 純 markdown 渲染（不處理 provider suffix）
+function MarkdownBody({ content }: { content: string }) {
   return (
-    <div>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-          h1: ({ children }) => <h1 className="text-base font-bold mt-3 mb-1">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-sm font-bold mt-3 mb-1">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-1">{children}</h3>,
-          ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-0.5">{children}</ul>,
-          ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
-          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-          em: ({ children }) => <em className="italic">{children}</em>,
-          blockquote: ({ children }) => (
-            <blockquote className="border-l-2 border-muted-foreground/40 pl-3 my-2 text-muted-foreground italic">
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+        h1: ({ children }) => <h1 className="text-base font-bold mt-3 mb-1">{children}</h1>,
+        h2: ({ children }) => <h2 className="text-sm font-bold mt-3 mb-1">{children}</h2>,
+        h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-1">{children}</h3>,
+        ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-0.5">{children}</ul>,
+        ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
+        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+        em: ({ children }) => <em className="italic">{children}</em>,
+        blockquote: ({ children }) => (
+          <blockquote className="border-l-2 border-muted-foreground/40 pl-3 my-2 text-muted-foreground italic">
+            {children}
+          </blockquote>
+        ),
+        code: ({ children, className }) => {
+          const isBlock = className?.startsWith("language-")
+          return isBlock ? (
+            <CodeBlock>{children}</CodeBlock>
+          ) : (
+            <code className="bg-black/10 dark:bg-white/10 rounded px-1 py-0.5 text-xs font-mono">
               {children}
-            </blockquote>
-          ),
-          code: ({ children, className }) => {
-            const isBlock = className?.startsWith("language-")
-            return isBlock ? (
-              <CodeBlock>{children}</CodeBlock>
-            ) : (
-              <code className="bg-black/10 dark:bg-white/10 rounded px-1 py-0.5 text-xs font-mono">
-                {children}
-              </code>
-            )
-          },
-          pre: ({ children }) => <>{children}</>,
-          hr: () => <hr className="my-3 border-muted-foreground/20" />,
-        }}
-      >
-        {text}
-      </ReactMarkdown>
-      {provider && (
-        <p className="mt-2 text-[10px] text-muted-foreground/60 border-t border-muted-foreground/10 pt-1.5">
-          via {provider}{model ? ` · ${model}` : ""}
-        </p>
-      )}
-    </div>
+            </code>
+          )
+        },
+        pre: ({ children }) => <>{children}</>,
+        hr: () => <hr className="my-3 border-muted-foreground/20" />,
+      }}
+    >
+      {content}
+    </ReactMarkdown>
   )
+}
+
+// 去掉 markdown fence 與包裹引號（重寫輸出後清理）
+function cleanRewrite(s: string): string {
+  let t = s.trim()
+  const fence = t.match(/^```[a-z]*\n([\s\S]*?)\n```$/i)
+  if (fence) t = fence[1].trim()
+  if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("「") && t.endsWith("」"))) {
+    t = t.slice(1, -1).trim()
+  }
+  return t
 }
 
 function MessageBubble({
@@ -167,6 +183,8 @@ function MessageBubble({
   bookmarked,
   onRegenerate,
   onBookmark,
+  onRewriteRequest,
+  onAcceptRewrite,
 }: {
   role: "user" | "assistant"
   content: string
@@ -177,9 +195,48 @@ function MessageBubble({
   bookmarked?: boolean
   onRegenerate?: () => void
   onBookmark?: () => void
+  // 重寫某段：回傳改寫後文字（已清理）
+  onRewriteRequest?: (paragraph: string, instruction: string) => Promise<string>
+  // 接受重寫：傳入重建後的整則 content
+  onAcceptRewrite?: (newContent: string) => void
 }) {
   const isUser = role === "user"
   const [copied, setCopied] = useState(false)
+
+  // 段落重寫狀態
+  const [rwIdx, setRwIdx] = useState<number | null>(null)
+  const [rwInstruction, setRwInstruction] = useState("")
+  const [rwLoading, setRwLoading] = useState(false)
+  const [rwPreview, setRwPreview] = useState<string | null>(null)
+  const [rwError, setRwError] = useState<string | null>(null)
+
+  const { text: bodyText, provider: vProvider, model: vModel } = parseProviderSuffix(content)
+  const paragraphs = bodyText.split(/\n\n+/)
+  const suffixStr = vProvider ? `\n\n_via ${vProvider}${vModel ? ` · ${vModel}` : ""}_` : ""
+  const canRewrite = !isUser && !!onRewriteRequest && !!onAcceptRewrite
+
+  const closeRewrite = () => {
+    setRwIdx(null); setRwInstruction(""); setRwPreview(null); setRwError(null); setRwLoading(false)
+  }
+  const runRewrite = async () => {
+    if (rwIdx === null || !onRewriteRequest) return
+    setRwError(null); setRwLoading(true)
+    try {
+      const out = await onRewriteRequest(paragraphs[rwIdx], rwInstruction.trim())
+      setRwPreview(out)
+    } catch (e: unknown) {
+      setRwError(e instanceof Error ? e.message : "重寫失敗")
+    } finally {
+      setRwLoading(false)
+    }
+  }
+  const acceptRewrite = () => {
+    if (rwIdx === null || rwPreview === null || !onAcceptRewrite) return
+    const next = [...paragraphs]
+    next[rwIdx] = rwPreview
+    onAcceptRewrite(next.join("\n\n") + suffixStr)
+    closeRewrite()
+  }
 
   const time = new Date(createdAt).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })
   const fullTime = new Date(createdAt).toLocaleString("zh-TW")
@@ -213,7 +270,63 @@ function MessageBubble({
             ? "bg-amber-700 text-white rounded-tr-sm whitespace-pre-wrap"
             : "bg-muted rounded-tl-sm"
         )}>
-          {isUser ? content : <AssistantMarkdown content={content} />}
+          {isUser ? content : (
+            <div>
+              {paragraphs.map((para, i) => (
+                <div key={i} className="relative group/para">
+                  <MarkdownBody content={para} />
+                  {canRewrite && rwIdx !== i && (
+                    <button
+                      onClick={() => { setRwIdx(i); setRwInstruction(""); setRwPreview(null); setRwError(null) }}
+                      className="absolute -left-6 top-0.5 p-1 rounded opacity-0 group-hover/para:opacity-100 transition-opacity hover:bg-black/10 dark:hover:bg-white/10"
+                      title="重寫這段"
+                    >
+                      <Wand2 className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                  )}
+                  {canRewrite && rwIdx === i && (
+                    <div className="my-2 rounded-xl border border-amber-300 dark:border-amber-800 bg-background/80 p-2.5 space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                        <Wand2 className="w-3.5 h-3.5" /> 重寫這段
+                      </div>
+                      <Input
+                        value={rwInstruction}
+                        onChange={(e) => setRwInstruction(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !rwLoading) runRewrite() }}
+                        placeholder="選填指示：更簡潔 / 更正式 / 翻成英文…"
+                        className="h-8 text-xs"
+                        disabled={rwLoading}
+                      />
+                      {rwError && <p className="text-xs text-red-500">{rwError}</p>}
+                      {rwPreview !== null ? (
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] text-muted-foreground line-through opacity-70">{para}</div>
+                          <div className="text-xs rounded-lg bg-amber-50 dark:bg-amber-950 px-2 py-1.5">{rwPreview}</div>
+                          <div className="flex gap-1.5">
+                            <Button size="sm" className="h-7 text-xs bg-amber-700 hover:bg-amber-800 text-white" onClick={acceptRewrite}>接受</Button>
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={runRewrite} disabled={rwLoading}>重試</Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={closeRewrite}>取消</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-1.5">
+                          <Button size="sm" className="h-7 text-xs bg-amber-700 hover:bg-amber-800 text-white" onClick={runRewrite} disabled={rwLoading}>
+                            {rwLoading ? "重寫中…" : "重寫"}
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={closeRewrite}>取消</Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {vProvider && (
+                <p className="mt-2 text-[10px] text-muted-foreground/60 border-t border-muted-foreground/10 pt-1.5">
+                  via {vProvider}{vModel ? ` · ${vModel}` : ""}
+                </p>
+              )}
+            </div>
+          )}
           {!isUser && (
             <button
               onClick={handleCopy}
@@ -294,7 +407,7 @@ interface ChatInterfaceProps {
 export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const router = useRouter()
   const {
-    conversations, agents, addMessage, updateLastMessage, removeLastAssistantMessage,
+    conversations, agents, addMessage, updateLastMessage, updateMessageContent, removeLastAssistantMessage,
     addConversation, setActiveConversation,
     renameConversation, setConversationSystemPrompt, toggleBookmarkMessage,
     addParticipant, removeParticipant,
@@ -304,7 +417,9 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [isStreaming, setIsStreaming] = useState(false)
   const [respondingAgentId, setRespondingAgentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [selectedProvider, setSelectedProvider] = useState<ProviderOption>("auto")
+  // 對話內覆寫：模型（"" = 跟隨 agent 預設）、溫度（null = 跟隨 agent）
+  const [selectedModel, setSelectedModel] = useState<string>("")
+  const [selectedTemp, setSelectedTemp] = useState<number | null>(null)
 
   // Rename title
   const [editingTitle, setEditingTitle] = useState(false)
@@ -452,12 +567,21 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       prompt = directUserPrompt ?? ""
     }
 
-    const body: Record<string, string> = {
+    const body: Record<string, string | number> = {
       prompt,
       systemPrompt,
       group: respondAgent.name || "chat",
     }
-    if (selectedProvider !== "auto") body.provider = selectedProvider
+    // 模型：對話內覆寫 > agent 預設；"auto" 代表不指定、走跨供應商回退
+    const effModel = selectedModel || respondAgent.model
+    if (effModel && effModel !== "auto") {
+      body.model = effModel
+      const prov = providerFromModel(effModel)
+      if (prov) body.provider = prov // 選具體 model 時 pin provider
+    }
+    // 溫度：對話內覆寫 > agent 預設
+    const effTemp = selectedTemp ?? respondAgent.temperature
+    if (typeof effTemp === "number") body.temperature = effTemp
 
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -501,6 +625,48 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         content: finalContent,
       }),
     }).catch(console.error)
+  }
+
+  // 段落重寫：用該段所屬 agent 的模型，限制只輸出改寫後段落
+  const rewriteParagraph = async (
+    rwAgent: Agent | undefined,
+    paragraph: string,
+    instruction: string,
+  ): Promise<string> => {
+    const systemPrompt = "你是嚴謹的文字編輯器。只輸出改寫後的段落本身，使用與原文相同的語言。不要加任何前言、說明、引號或 markdown 程式碼框。"
+    const prompt = instruction
+      ? `請依指示改寫以下段落。\n指示：${instruction}\n\n段落：\n${paragraph}`
+      : `請改寫以下段落，保持原意但換個說法：\n\n${paragraph}`
+
+    const body: Record<string, string | number> = {
+      prompt, systemPrompt, group: rwAgent?.name || "rewrite",
+    }
+    const effModel = selectedModel || rwAgent?.model
+    if (effModel && effModel !== "auto") {
+      body.model = effModel
+      const prov = providerFromModel(effModel)
+      if (prov) body.provider = prov
+    }
+    const effTemp = selectedTemp ?? rwAgent?.temperature
+    if (typeof effTemp === "number") body.temperature = effTemp
+
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}))
+      throw new Error(e.error || `HTTP ${res.status}`)
+    }
+    let acc = ""
+    for await (const chunk of readSSEStream(res)) {
+      if (chunk.error) throw new Error(chunk.error)
+      if (chunk.delta) acc += chunk.delta
+    }
+    const cleaned = cleanRewrite(acc)
+    if (!cleaned) throw new Error("沒有取得改寫結果")
+    return cleaned
   }
 
   const handleSend = async (promptOverride?: string) => {
@@ -614,6 +780,14 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     : undefined
 
   const availableToAdd = agents.filter((a) => !participantIds.includes(a.id))
+
+  // 模型/溫度 控制的有效值與選項
+  const effModelValue = selectedModel || primaryAgent?.model || "auto"
+  const effTempValue = selectedTemp ?? primaryAgent?.temperature ?? 0.7
+  // 確保 agent 目前的 model 一定在選項中（mock agent 可能用清單外的型號）
+  const modelOptions = MODEL_OPTIONS.some((o) => o.value === effModelValue)
+    ? MODEL_OPTIONS
+    : [{ value: effModelValue, label: `${effModelValue}（Agent 預設）` }, ...MODEL_OPTIONS]
 
   return (
     <div className="flex flex-col h-full">
@@ -756,6 +930,16 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     bookmarked={msg.bookmarked}
                     onRegenerate={idx === messages.length - 1 && lastIsAssistant && !isStreaming ? handleRegenerate : undefined}
                     onBookmark={conversationId ? () => toggleBookmarkMessage(conversationId, msg.id) : undefined}
+                    onRewriteRequest={
+                      conversationId
+                        ? (para, instruction) => rewriteParagraph(speaker ?? primaryAgent, para, instruction)
+                        : undefined
+                    }
+                    onAcceptRewrite={
+                      conversationId
+                        ? (newContent) => updateMessageContent(conversationId, msg.id, newContent)
+                        : undefined
+                    }
                   />
                 )
               })}
@@ -839,22 +1023,31 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   : <Send className="w-3.5 h-3.5 text-white" />}
               </Button>
             </div>
-            {/* Model selector chips */}
-            <div className="flex items-center gap-1.5">
-              {PROVIDER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setSelectedProvider(opt.value)}
-                  className={cn(
-                    "px-2.5 py-1 rounded-full text-xs transition-colors",
-                    selectedProvider === opt.value
-                      ? "bg-amber-700 text-white"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  )}
+            {/* 模型 + 溫度 控制 */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground">模型</span>
+                <select
+                  value={effModelValue}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className="text-xs bg-muted rounded-full px-2.5 py-1 outline-none cursor-pointer hover:bg-muted/80 max-w-[180px]"
+                  title="此選擇只套用於接下來發送的訊息"
                 >
-                  {opt.label}
-                </button>
-              ))}
+                  {modelOptions.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground whitespace-nowrap">溫度 {effTempValue.toFixed(1)}</span>
+                <input
+                  type="range" min={0} max={2} step={0.1}
+                  value={effTempValue}
+                  onChange={(e) => setSelectedTemp(parseFloat(e.target.value))}
+                  className="w-20 accent-amber-700 cursor-pointer"
+                  title="此溫度只套用於接下來發送的訊息"
+                />
+              </div>
             </div>
           </div>
         </div>

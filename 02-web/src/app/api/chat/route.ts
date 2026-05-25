@@ -29,6 +29,8 @@ async function tryStreamWithProvider(
   group: string,
   provider: Provider,
   token: string,
+  model?: string,
+  temperature?: number,
 ): Promise<Response | null> {
   const res = await fetch(`${PROXY_BASE}/api/chat/stream`, {
     method: "POST",
@@ -36,7 +38,11 @@ async function tryStreamWithProvider(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ prompt, project, group, provider }),
+    body: JSON.stringify({
+      prompt, project, group, provider,
+      ...(model ? { model } : {}),
+      ...(typeof temperature === "number" ? { temperature } : {}),
+    }),
   })
 
   if (res.ok) return res
@@ -61,6 +67,8 @@ async function tryRestWithProvider(
   group: string,
   provider: Provider,
   token: string,
+  model?: string,
+  temperature?: number,
 ): Promise<{ delta: string; actual_provider: string; actual_model: string } | null> {
   const res = await fetch(`${PROXY_BASE}/api/chat`, {
     method: "POST",
@@ -68,7 +76,11 @@ async function tryRestWithProvider(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ prompt, project, group, provider }),
+    body: JSON.stringify({
+      prompt, project, group, provider,
+      ...(model ? { model } : {}),
+      ...(typeof temperature === "number" ? { temperature } : {}),
+    }),
   })
 
   const data = await res.json().catch(() => null)
@@ -85,7 +97,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { prompt, systemPrompt, project, group, provider: requestedProvider } = await req.json()
+  const { prompt, systemPrompt, project, group, provider: requestedProvider, model, temperature } = await req.json()
   const token = process.env.PROXY_TOKEN
 
   if (!token) {
@@ -107,7 +119,7 @@ export async function POST(req: NextRequest) {
     // Try providers in order
     for (const provider of providers) {
       const streamRes = await tryStreamWithProvider(
-        fullPrompt, resolvedProject, group || "chat", provider, token,
+        fullPrompt, resolvedProject, group || "chat", provider, token, model, temperature,
       )
 
       if (streamRes) {
@@ -125,7 +137,7 @@ export async function POST(req: NextRequest) {
     // All streaming failed — try REST with last provider as last resort
     const fallbackProvider: Provider = isSpecificProvider ? (requestedProvider as Provider) : "claude"
     const rest = await tryRestWithProvider(
-      fullPrompt, resolvedProject, group || "chat", fallbackProvider, token,
+      fullPrompt, resolvedProject, group || "chat", fallbackProvider, token, model, temperature,
     )
     if (rest) {
       const sseBody = `data: ${JSON.stringify({ delta: rest.delta, done: true, actual_provider: rest.actual_provider, actual_model: rest.actual_model })}\n\n`
