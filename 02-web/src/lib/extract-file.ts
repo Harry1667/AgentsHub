@@ -1,6 +1,6 @@
-// 從上傳檔案抽取純文字。
-// 文字類直接讀；PDF 用 pdfjs-dist（worker 走 unpkg，版本對齊）。
-// 註：REST proxy 不支援圖片 vision，故僅處理可轉文字的檔案。
+// 上傳檔案處理。
+// 文字類 → 抽純文字併入 prompt；圖片 → base64 走 proxy 多模態(vision)。
+// 素材文字檔用 FileReader.text；PDF 用 pdfjs-dist；圖片轉 base64。
 
 export const MAX_FILE_CHARS = 60000
 
@@ -9,12 +9,16 @@ const TEXT_EXT = [
   "js", "ts", "tsx", "jsx", "py", "java", "c", "cpp", "h", "go", "rs", "rb", "php",
   "sh", "sql", "css", "scss", "log", "env", "ini", "toml", "conf",
 ]
+const IMAGE_EXT = ["png", "jpg", "jpeg", "webp", "gif"]
 
-export function isSupportedFile(file: File): boolean {
+export type FileKind = "image" | "text" | "unsupported"
+
+export function fileKind(file: File): FileKind {
   const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
-  if (ext === "pdf" || file.type === "application/pdf") return true
-  if (TEXT_EXT.includes(ext)) return true
-  return file.type.startsWith("text/")
+  if (ext === "pdf" || file.type === "application/pdf") return "text"
+  if (IMAGE_EXT.includes(ext) || file.type.startsWith("image/")) return "image"
+  if (TEXT_EXT.includes(ext) || file.type.startsWith("text/")) return "text"
+  return "unsupported"
 }
 
 export async function extractFileText(file: File): Promise<string> {
@@ -24,10 +28,17 @@ export async function extractFileText(file: File): Promise<string> {
   return t.slice(0, MAX_FILE_CHARS)
 }
 
+// 圖片 → { mime_type, data(純 base64) }，符合 proxy 多模態格式
+export async function readImage(file: File): Promise<{ mime: string; data: string }> {
+  const buf = await file.arrayBuffer()
+  let binary = ""
+  const bytes = new Uint8Array(buf)
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+  return { mime: file.type || "image/png", data: btoa(binary) }
+}
+
 async function extractPdf(file: File): Promise<string> {
-  // 動態載入，避免進入主 bundle
   const pdfjs = await import("pdfjs-dist")
-  // worker 用對齊版本的 unpkg CDN
   ;(pdfjs as unknown as { GlobalWorkerOptions: { workerSrc: string } }).GlobalWorkerOptions.workerSrc =
     `https://unpkg.com/pdfjs-dist@${(pdfjs as unknown as { version: string }).version}/build/pdf.worker.min.mjs`
   const data = await file.arrayBuffer()

@@ -21,7 +21,11 @@ import {
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { usePageTitle } from "@/components/page-header"
-import { extractFileText, isSupportedFile } from "@/lib/extract-file"
+import { extractFileText, readImage, fileKind } from "@/lib/extract-file"
+
+type Attachment =
+  | { name: string; kind: "text"; text: string }
+  | { name: string; kind: "image"; mime: string; data: string }
 
 // 附件分隔標記：使用者訊息 content 內嵌附件文字，前段為打字內容
 const ATTACH_SEP = "\n\n===📎附件："
@@ -484,8 +488,8 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [showParticipants, setShowParticipants] = useState(false)
   // @mention 自動完成
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
-  // 附件（文字檔/PDF 抽出的文字）
-  const [attachments, setAttachments] = useState<{ name: string; text: string }[]>([])
+  // 附件（文字檔/PDF 抽文 或 圖片 base64）
+  const [attachments, setAttachments] = useState<Attachment[]>([])
   const [attaching, setAttaching] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -600,6 +604,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     respondAgent: Agent,
     allParticipants: Agent[],
     directUserPrompt?: string,
+    images?: { mime_type: string; data: string }[],
   ) => {
     abortRef.current = new AbortController()
     setRespondingAgentId(respondAgent.id)
@@ -629,17 +634,23 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       }
     }
 
-    const body: Record<string, string | number> = {
+    const hasImages = !!images && images.length > 0
+    const body: Record<string, unknown> = {
       prompt,
       systemPrompt,
       group: respondAgent.name || "chat",
     }
+    if (hasImages) body.images = images
     // 模型：對話內覆寫 > agent 預設；"auto" 代表不指定、走跨供應商回退
     const effModel = selectedModel || respondAgent.model
     if (effModel && effModel !== "auto") {
-      body.model = effModel
       const prov = providerFromModel(effModel)
-      if (prov) body.provider = prov // 選具體 model 時 pin provider
+      // 含圖片且模型為 Claude 時不 pin（其多模態目前不穩），改走自動回退挑支援視覺的供應商
+      const skipPin = hasImages && prov === "claude"
+      if (!skipPin) {
+        body.model = effModel
+        if (prov) body.provider = prov
+      }
     }
     // 溫度：對話內覆寫 > agent 預設
     const effTemp = selectedTemp ?? respondAgent.temperature
@@ -743,10 +754,16 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     setError(null); setAttaching(true)
     try {
       for (const file of Array.from(files)) {
-        if (!isSupportedFile(file)) { setError(`不支援的檔案：${file.name}（僅文字檔/PDF）`); continue }
-        const text = await extractFileText(file)
-        if (!text.trim()) { setError(`無法從 ${file.name} 取得文字`); continue }
-        setAttachments((prev) => [...prev, { name: file.name, text }])
+        const kind = fileKind(file)
+        if (kind === "unsupported") { setError(`不支援的檔案：${file.name}（文字檔 / PDF / 圖片）`); continue }
+        if (kind === "image") {
+          const { mime, data } = await readImage(file)
+          setAttachments((prev) => [...prev, { name: file.name, kind: "image", mime, data }])
+        } else {
+          const text = await extractFileText(file)
+          if (!text.trim()) { setError(`無法從 ${file.name} 取得文字`); continue }
+          setAttachments((prev) => [...prev, { name: file.name, kind: "text", text }])
+        }
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? `檔案解析失敗：${e.message}` : "檔案解析失敗")
@@ -773,10 +790,14 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       router.push(`/chat/${convId}`)
     }
 
-    // 把附件文字併入要送出的內容（AI 讀得到；重載也能解析顯示）
+    // 文字附件 → 併入內容（AI 讀得到、重載可解析）；圖片附件 → 走 vision
+    const textAtts = attachments.filter((a): a is Extract<Attachment, { kind: "text" }> => a.kind === "text")
+    const images = attachments
+      .filter((a): a is Extract<Attachment, { kind: "image" }> => a.kind === "image")
+      .map((a) => ({ mime_type: a.mime, data: a.data }))
     const outgoing = (!promptOverride && attachments.length > 0)
       ? `${trimmed}${ATTACH_SEP}${attachments.map((a) => a.name).join("、")}===\n` +
-        attachments.map((a) => `【${a.name}】\n${a.text}`).join("\n\n")
+        textAtts.map((a) => `【${a.name}】\n${a.text}`).join("\n\n")
       : trimmed
 
     // 決定回覆者：有 @點名 → 被點到的；否則 → 主 agent
@@ -795,7 +816,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
     try {
       for (const responder of responders) {
-        await respondWithAgent(convId, responder, activeParticipants, outgoing)
+        await respondWithAgent(convId, responder, activeParticipants, outgoing, images)
       }
     } catch (e: unknown) {
       if (e instanceof Error && e.name !== "AbortError") setError(e.message)
@@ -1100,8 +1121,10 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
             {(attachments.length > 0 || attaching) && (
               <div className="flex flex-wrap items-center gap-1.5">
                 {attachments.map((a, i) => (
-                  <span key={i} className="flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-muted text-xs">
-                    <FileText className="w-3 h-3 text-muted-foreground" />
+                  <span key={i} className="flex items-center gap-1 pl-1 pr-1 py-0.5 rounded-full bg-muted text-xs">
+                    {a.kind === "image"
+                      ? <img src={`data:${a.mime};base64,${a.data}`} alt="" className="w-5 h-5 rounded object-cover" />
+                      : <FileText className="w-3 h-3 text-muted-foreground ml-1" />}
                     <span className="max-w-[140px] truncate">{a.name}</span>
                     <button onClick={() => setAttachments((p) => p.filter((_, j) => j !== i))} className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10" title="移除">
                       <X className="w-3 h-3" />
@@ -1115,7 +1138,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".txt,.md,.markdown,.csv,.tsv,.json,.yaml,.yml,.xml,.html,.js,.ts,.tsx,.jsx,.py,.java,.c,.cpp,.h,.go,.rs,.rb,.php,.sh,.sql,.css,.log,.pdf,text/*,application/pdf"
+              accept=".txt,.md,.markdown,.csv,.tsv,.json,.yaml,.yml,.xml,.html,.js,.ts,.tsx,.jsx,.py,.java,.c,.cpp,.h,.go,.rs,.rb,.php,.sh,.sql,.css,.log,.pdf,.png,.jpg,.jpeg,.webp,.gif,text/*,application/pdf,image/*"
               className="hidden"
               onChange={(e) => handleFiles(e.target.files)}
             />
