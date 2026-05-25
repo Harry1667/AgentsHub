@@ -45,9 +45,6 @@ const FURNITURE: Furniture[] = [
 ]
 
 const MEETING_ZONE = { x: 168, y: 96, w: 76, h: 56 }
-// 工作中聚集（桌子附近）、閒置聚集（沙發附近）
-const DESK_ZONE = { x: 50, y: 66, w: 70, h: 30 }
-const REST_ZONE = { x: 192, y: 58, w: 48, h: 28 }
 // 牆上「徵人」公告板 — 點擊進 AI 建構師
 const RECRUIT_ZONE = { x: 198, y: 6, w: 56, h: 24 }
 
@@ -65,6 +62,7 @@ interface Walker {
   sheetIndex: number
   x: number; y: number
   tx: number; ty: number
+  homeX: number; homeY: number   // 專屬工位
   dir: Direction
   moving: boolean
   frame: number
@@ -79,13 +77,22 @@ interface Walker {
 }
 
 function rand(a: number, b: number) { return a + Math.random() * (b - a) }
+function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)) }
 function inZone(x: number, y: number, z: { x: number; y: number; w: number; h: number }) {
   return x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h
 }
-function targetFor(b: Behavior): { x: number; y: number } {
-  if (b === "working") return { x: rand(DESK_ZONE.x, DESK_ZONE.x + DESK_ZONE.w), y: rand(DESK_ZONE.y, DESK_ZONE.y + DESK_ZONE.h) }
-  if (b === "idle") return { x: rand(REST_ZONE.x, REST_ZONE.x + REST_ZONE.w), y: rand(REST_ZONE.y, REST_ZONE.y + REST_ZONE.h) }
-  return { x: rand(24, WORLD_W - 24), y: rand(56, WORLD_H - 16) }
+// 每個 agent 有專屬工位座標，平時只在自己工位附近小範圍遊走（避免全部擠成一團）
+const WALK_X0 = 28, WALK_X1 = 232, WALK_Y0 = 60, WALK_Y1 = 156
+function homeFor(index: number, total: number): { x: number; y: number } {
+  const cols = Math.max(1, Math.min(5, Math.ceil(Math.sqrt(total))))
+  const rows = Math.max(1, Math.ceil(total / cols))
+  const gx = index % cols, gy = Math.floor(index / cols)
+  const x = WALK_X0 + (gx + 0.5) * ((WALK_X1 - WALK_X0) / cols)
+  const y = WALK_Y0 + (gy + 0.5) * ((WALK_Y1 - WALK_Y0) / rows)
+  return { x, y }
+}
+function wanderTarget(hx: number, hy: number): { x: number; y: number } {
+  return { x: clamp(hx + rand(-16, 16), WALK_X0, WALK_X1), y: clamp(hy + rand(-12, 12), WALK_Y0, WALK_Y1) }
 }
 
 interface OfficeViewProps {
@@ -139,11 +146,12 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
       const la = lastActive.get(agent.id) ?? 0
       const age = now - la
       const behavior: Behavior = la === 0 || age >= ACTIVE_MS ? "idle" : age < WORKING_MS ? "working" : "active"
-      const t = targetFor(behavior)
+      const home = homeFor(i, agents.length)
+      const t = wanderTarget(home.x, home.y)
       return {
         agent, sheetIndex: i % CHAR_COUNT,
-        x: rand(24, WORLD_W - 24), y: rand(56, WORLD_H - 16),
-        tx: t.x, ty: t.y, dir: "down", moving: true,
+        x: home.x + rand(-8, 8), y: home.y + rand(-6, 6),
+        tx: t.x, ty: t.y, homeX: home.x, homeY: home.y, dir: "down", moving: true,
         frame: 0, frameTimer: 0, pause: rand(0, 2),
         behavior, dragging: false, bob: Math.random() * Math.PI * 2,
         actionEmoji: null, chatting: false, fresh: la === 0,
@@ -179,7 +187,7 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
           w.moving = false
           w.pause = w.behavior === "idle" ? rand(2.5, 6) : rand(1, 3.5)
           w.actionEmoji = pickAction(w.fresh ? "active" : w.behavior)  // 抵達定點 → 隨機做點事（新人保持清醒）
-          const t = targetFor(w.behavior); w.tx = t.x; w.ty = t.y
+          const t = wanderTarget(w.homeX, w.homeY); w.tx = t.x; w.ty = t.y
         } else {
           w.moving = true
           w.actionEmoji = null  // 走動時不冒氣泡
@@ -200,7 +208,7 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
           const a = ws[i], b = ws[j]
           if (a.moving || b.moving || a.dragging || b.dragging) continue
           if (staged.includes(a.agent.id) || staged.includes(b.agent.id)) continue
-          if (Math.hypot(a.x - b.x, a.y - b.y) < 22) {
+          if (Math.hypot(a.x - b.x, a.y - b.y) < 15) {
             a.chatting = b.chatting = true
             a.dir = a.x <= b.x ? "right" : "left"
             b.dir = b.x < a.x ? "right" : "left"
@@ -356,7 +364,7 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
               if (intoMeeting && !cur.includes(id)) setStaged([...cur, id])
               else if (!intoMeeting && cur.includes(id)) {
                 setStaged(cur.filter((x2) => x2 !== id))
-                const t = targetFor(d.walker.behavior); d.walker.tx = t.x; d.walker.ty = t.y
+                const t = wanderTarget(d.walker.homeX, d.walker.homeY); d.walker.tx = t.x; d.walker.ty = t.y
               }
             } else {
               cbRef.current.onOpenAgent(d.walker.agent) // 純點擊
