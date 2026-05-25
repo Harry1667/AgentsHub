@@ -1,16 +1,21 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAppStore } from "@/lib/store"
+import { DEFAULT_AGENTS } from "@/lib/mock-data"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Edit2, Trash2, MessageSquare } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Plus, Edit2, Trash2, MessageSquare, LayoutTemplate } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 
 export default function AgentsPage() {
   const router = useRouter()
-  const { agents, deleteAgent, addConversation, setActiveConversation } = useAppStore()
+  const { agents, deleteAgent, addConversation, setActiveConversation, saveAgent } = useAppStore()
+  const [showTemplates, setShowTemplates] = useState(false)
 
   const handleChat = (agentId: string) => {
     const conv = addConversation(agentId)
@@ -18,19 +23,28 @@ export default function AgentsPage() {
     router.push(`/chat/${conv.id}`)
   }
 
+  const myIds = new Set(agents.map((a) => a.id))
+  const templates = DEFAULT_AGENTS.filter((a) => !myIds.has(a.id))
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <PageHeader
         title="我的 Agent"
         subtitle="管理你的 AI 助手，自訂個性與能力"
         actions={
-          <Button
-            className="gap-2 bg-amber-700 hover:bg-amber-800 text-white"
-            onClick={() => router.push("/agents/new")}
-          >
-            <Plus className="w-4 h-4" />
-            建立 Agent
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => setShowTemplates(true)}>
+              <LayoutTemplate className="w-4 h-4" />
+              從範本新增
+            </Button>
+            <Button
+              className="gap-2 bg-amber-700 hover:bg-amber-800 text-white"
+              onClick={() => router.push("/agents/new")}
+            >
+              <Plus className="w-4 h-4" />
+              建立 Agent
+            </Button>
+          </div>
         }
       />
 
@@ -91,6 +105,40 @@ export default function AgentsPage() {
           </button>
         </div>
       </div>
+
+      {/* 從範本新增（原 Agent 廣場） */}
+      <Dialog open={showTemplates} onOpenChange={setShowTemplates}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LayoutTemplate className="w-4 h-4" />從範本新增 Agent
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-2">挑一個預設範本，一鍵加入你的 Agent。</p>
+          {templates.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">所有範本都已加入 🎉</p>
+          ) : (
+            <ScrollArea className="max-h-80">
+              <div className="space-y-1 pr-2">
+                {templates.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => saveAgent({ ...t, createdAt: new Date().toISOString() })}
+                    className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm hover:bg-muted transition-colors text-left"
+                  >
+                    <span className="text-2xl shrink-0">{t.avatar}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block font-medium truncate">{t.name}</span>
+                      <span className="block text-xs text-muted-foreground truncate">{t.description}</span>
+                    </span>
+                    <Plus className="w-4 h-4 text-muted-foreground shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

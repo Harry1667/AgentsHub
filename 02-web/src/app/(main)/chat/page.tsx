@@ -177,8 +177,6 @@ function MeetingRoomCard({ count, onClick }: { count: number; onClick: () => voi
 export default function ChatPage() {
   const router = useRouter()
   const { agents, conversations, addConversation, setActiveConversation, isLoaded, togglePinAgent, workspaceView, setWorkspaceView } = useAppStore()
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
-  const [dialogOpen, setDialogOpen] = useState(false)
 
   // 會議室
   const [meetingOpen, setMeetingOpen] = useState(false)
@@ -188,11 +186,6 @@ export default function ChatPage() {
   const meetings = conversations
     .filter(isMeetingConv)
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-
-  // 單人桌只列「非會議」對話
-  const agentConversations = selectedAgent
-    ? conversations.filter((c) => c.agentId === selectedAgent.id && !isMeetingConv(c))
-    : []
 
   const togglePick = (id: string) =>
     setPickedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -219,9 +212,14 @@ export default function ChatPage() {
     return 0
   })
 
+  // 點 agent → 直接進該 agent 最近一次（單人）對話；沒有就開新
   const handleAgentClick = (agent: Agent) => {
-    setSelectedAgent(agent)
-    setDialogOpen(true)
+    const latest = conversations
+      .filter((c) => c.agentId === agent.id && !isMeetingConv(c))
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
+    const conv = latest ?? addConversation(agent.id)
+    setActiveConversation(conv.id)
+    router.push(`/chat/${conv.id}`)
   }
 
   const handleTogglePin = (e: React.MouseEvent | React.KeyboardEvent, agent: Agent) => {
@@ -229,17 +227,9 @@ export default function ChatPage() {
     togglePinAgent(agent.id)
   }
 
-  const handleNewConversation = () => {
-    if (!selectedAgent) return
-    const conv = addConversation(selectedAgent.id)
-    setActiveConversation(conv.id)
-    setDialogOpen(false)
-    router.push(`/chat/${conv.id}`)
-  }
-
   const handleSelectConversation = (convId: string) => {
     setActiveConversation(convId)
-    setDialogOpen(false)
+    setMeetingOpen(false)
     router.push(`/chat/${convId}`)
   }
 
@@ -325,47 +315,6 @@ export default function ChatPage() {
           </div>
         )}
       </div>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedAgent?.avatar} {selectedAgent?.name} 的對話
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-3">
-            <Button
-              onClick={handleNewConversation}
-              className="w-full gap-2 bg-amber-700 hover:bg-amber-800 text-white"
-            >
-              <Plus className="w-4 h-4" />
-              新對話
-            </Button>
-
-            {agentConversations.length > 0 ? (
-              <ScrollArea className="max-h-72">
-                <div className="space-y-1 pr-2">
-                  {agentConversations.map((conv) => (
-                    <button
-                      key={conv.id}
-                      onClick={() => handleSelectConversation(conv.id)}
-                      className="w-full flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm hover:bg-muted transition-colors text-left"
-                    >
-                      <span className="flex-1 truncate">{conv.title}</span>
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {new Date(conv.updatedAt).toLocaleDateString("zh-TW", { month: "numeric", day: "numeric" })}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </ScrollArea>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">還沒有對話，點上方按鈕開始</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* 會議室 Dialog */}
       <Dialog open={meetingOpen} onOpenChange={(o) => { setMeetingOpen(o); if (!o) { setPicking(false); setPickedIds([]) } }}>
