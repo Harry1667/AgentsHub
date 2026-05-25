@@ -11,9 +11,11 @@ interface AppState {
   sidebarOpen: boolean
   isLoaded: boolean
   defaultModel: string  // 對話預設模型（""=跟隨 Agent；可在對話中臨時覆寫）
+  workspaceView: "grid" | "office"  // 工位頁視圖
 
   loadFromDb: () => Promise<void>
   setDefaultModel: (model: string) => void
+  setWorkspaceView: (v: "grid" | "office") => void
   setActiveConversation: (id: string | null) => void
   setActiveAgent: (id: string | null) => void
   addConversation: (agentId: string, participantIds?: string[]) => Conversation
@@ -52,6 +54,7 @@ export const useAppStore = create<AppState>()(
       sidebarOpen: true,
       isLoaded: false,
       defaultModel: "",
+      workspaceView: "grid",
 
       loadFromDb: async () => {
         const [agentsData, convsData] = await Promise.all([
@@ -306,10 +309,11 @@ export const useAppStore = create<AppState>()(
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
 
       setDefaultModel: (model) => set({ defaultModel: model }),
+      setWorkspaceView: (v) => set({ workspaceView: v }),
     }),
     {
       name: "agent-store",
-      partialize: (s) => ({ theme: s.theme, defaultModel: s.defaultModel }),
+      partialize: (s) => ({ theme: s.theme, defaultModel: s.defaultModel, workspaceView: s.workspaceView }),
     }
   )
 )

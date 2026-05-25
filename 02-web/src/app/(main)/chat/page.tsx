@@ -11,10 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Plus, Users, Check } from "lucide-react"
+import { Plus, Users, Check, LayoutGrid, Building2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Agent, Conversation } from "@/lib/types"
 import { PageHeader } from "@/components/page-header"
+import { OfficeView } from "@/components/office-view"
 
 // 多 agent 會議判定
 function isMeetingConv(c: Conversation): boolean {
@@ -175,7 +176,7 @@ function MeetingRoomCard({ count, onClick }: { count: number; onClick: () => voi
 
 export default function ChatPage() {
   const router = useRouter()
-  const { agents, conversations, addConversation, setActiveConversation, isLoaded, togglePinAgent } = useAppStore()
+  const { agents, conversations, addConversation, setActiveConversation, isLoaded, togglePinAgent, workspaceView, setWorkspaceView } = useAppStore()
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -265,26 +266,58 @@ export default function ChatPage() {
       <PageHeader
         title="對話工作區"
         subtitle="選擇一個 Agent 開始對話，或進入會議室發起多人討論"
+        actions={
+          <div className="flex items-center rounded-lg border p-0.5">
+            <button
+              onClick={() => setWorkspaceView("grid")}
+              className={cn("flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs transition-colors",
+                workspaceView === "grid" ? "bg-amber-700 text-white" : "text-muted-foreground hover:bg-muted")}
+              title="卡片檢視"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" /> 卡片
+            </button>
+            <button
+              onClick={() => setWorkspaceView("office")}
+              className={cn("flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs transition-colors",
+                workspaceView === "office" ? "bg-amber-700 text-white" : "text-muted-foreground hover:bg-muted")}
+              title="辦公室檢視"
+            >
+              <Building2 className="w-3.5 h-3.5" /> 辦公室
+            </button>
+          </div>
+        }
       />
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {/* 會議室固定在最前 */}
-          <MeetingRoomCard count={meetings.length} onClick={() => { setPicking(false); setMeetingOpen(true) }} />
-          {sortedAgents.map((agent, index) => {
-            const convCount = conversations.filter((c) => c.agentId === agent.id && !isMeetingConv(c)).length
-            return (
-              <AgentCard
-                key={agent.id}
-                agent={agent}
-                index={index}
-                convCount={convCount}
-                onClick={() => handleAgentClick(agent)}
-                onTogglePin={(e) => handleTogglePin(e, agent)}
-              />
-            )
-          })}
-        </div>
+        {workspaceView === "office" ? (
+          <div className="max-w-4xl mx-auto">
+            <OfficeView
+              agents={sortedAgents}
+              conversations={conversations}
+              onOpenAgent={handleAgentClick}
+              onOpenMeeting={() => { setPicking(false); setMeetingOpen(true) }}
+            />
+            <p className="text-center text-xs text-muted-foreground mt-3">點小人開始對話 ・ 點地毯發起會議</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {/* 會議室固定在最前 */}
+            <MeetingRoomCard count={meetings.length} onClick={() => { setPicking(false); setMeetingOpen(true) }} />
+            {sortedAgents.map((agent, index) => {
+              const convCount = conversations.filter((c) => c.agentId === agent.id && !isMeetingConv(c)).length
+              return (
+                <AgentCard
+                  key={agent.id}
+                  agent={agent}
+                  index={index}
+                  convCount={convCount}
+                  onClick={() => handleAgentClick(agent)}
+                  onTogglePin={(e) => handleTogglePin(e, agent)}
+                />
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
