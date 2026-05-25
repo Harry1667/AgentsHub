@@ -30,6 +30,9 @@ export async function GET(req: NextRequest) {
     convRows.map((conv) => ({
       id: conv.id,
       agentId: conv.agentId,
+      participantIds: (conv.participantIds && conv.participantIds.length > 0)
+        ? conv.participantIds
+        : [conv.agentId],
       title: conv.title,
       createdAt: conv.createdAt?.toISOString() ?? new Date().toISOString(),
       updatedAt: conv.updatedAt?.toISOString() ?? new Date().toISOString(),
@@ -37,6 +40,7 @@ export async function GET(req: NextRequest) {
         id: msg.id,
         conversationId: msg.conversationId,
         role: msg.role,
+        agentId: msg.agentId ?? undefined,
         content: msg.content,
         createdAt: msg.createdAt?.toISOString() ?? new Date().toISOString(),
       })),
@@ -52,6 +56,9 @@ export async function POST(req: NextRequest) {
     id: body.id,
     userId,
     agentId: body.agentId,
+    participantIds: Array.isArray(body.participantIds) && body.participantIds.length > 0
+      ? body.participantIds
+      : [body.agentId],
     title: body.title ?? "新對話",
   })
   return NextResponse.json({ ok: true })

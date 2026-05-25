@@ -9,6 +9,7 @@ export async function POST(req: NextRequest) {
     id: body.id,
     conversationId: body.conversationId,
     role: body.role,
+    agentId: body.agentId ?? null,
     content: body.content,
   })
   return NextResponse.json({ ok: true })

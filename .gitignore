@@ -24,3 +24,6 @@ next-env.d.ts
 
 # Vercel
 .vercel
+
+# 保留 env 範本
+!02-web/.env.example

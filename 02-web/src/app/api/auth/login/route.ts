@@ -19,6 +19,8 @@ async function ensureAdminExists() {
     username: adminUser,
     passwordHash: hash,
     role: "admin",
+    displayName: adminUser,
+    avatar: "👤",
   })
 }
 

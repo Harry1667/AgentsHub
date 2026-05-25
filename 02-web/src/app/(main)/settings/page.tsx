@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Trash2, LogOut, KeyRound, CheckCircle2, UserRound } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { PageHeader } from "@/components/page-header"
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useAppStore()
@@ -97,10 +98,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="border-b px-6 py-5">
-        <h1 className="text-2xl font-bold mb-1">設定</h1>
-        <p className="text-muted-foreground text-sm">管理外觀與偏好設定</p>
-      </div>
+      <PageHeader title="設定" subtitle="管理外觀與偏好設定" />
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl mx-auto space-y-8">

@@ -10,7 +10,12 @@ export async function PATCH(
   const { id } = await params
   const db = getDb()
   const body = await req.json()
-  await db.update(conversations).set({ title: body.title }).where(eq(conversations.id, id))
+  const patch: { title?: string; participantIds?: string[] } = {}
+  if (typeof body.title === "string") patch.title = body.title
+  if (Array.isArray(body.participantIds)) patch.participantIds = body.participantIds
+  if (Object.keys(patch).length > 0) {
+    await db.update(conversations).set(patch).where(eq(conversations.id, id))
+  }
   return NextResponse.json({ ok: true })
 }
 

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Search, Users, Plus, Check } from "lucide-react"
 import { Agent } from "@/lib/types"
+import { PageHeader } from "@/components/page-header"
 
 const CATEGORIES = ["全部", "程式", "寫作", "翻譯", "分析", "創意", "工具", "生活", "財務"]
 
@@ -49,11 +50,14 @@ export default function MarketplacePage() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="border-b px-6 py-5">
-        <h1 className="text-2xl font-bold mb-1">Agent 廣場</h1>
-        <p className="text-muted-foreground text-sm">探索社群分享的 AI Agent，一鍵加入你的工作流</p>
+      <PageHeader
+        title="Agent 廣場"
+        subtitle="探索社群分享的 AI Agent，一鍵加入你的工作流"
+      />
 
-        <div className="mt-4 flex gap-3">
+      {/* 搜尋與分類 */}
+      <div className="border-b px-6 py-4 shrink-0">
+        <div className="flex gap-3">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input

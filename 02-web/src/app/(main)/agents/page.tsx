@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Edit2, Trash2, MessageSquare } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 
 export default function AgentsPage() {
   const router = useRouter()
@@ -19,12 +20,10 @@ export default function AgentsPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="border-b px-6 py-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold mb-1">我的 Agent</h1>
-            <p className="text-muted-foreground text-sm">管理你的 AI 助手，自訂個性與能力</p>
-          </div>
+      <PageHeader
+        title="我的 Agent"
+        subtitle="管理你的 AI 助手，自訂個性與能力"
+        actions={
           <Button
             className="gap-2 bg-amber-700 hover:bg-amber-800 text-white"
             onClick={() => router.push("/agents/new")}
@@ -32,8 +31,8 @@ export default function AgentsPage() {
             <Plus className="w-4 h-4" />
             建立 Agent
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

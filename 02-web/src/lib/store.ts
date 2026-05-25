@@ -14,13 +14,15 @@ interface AppState {
   loadFromDb: () => Promise<void>
   setActiveConversation: (id: string | null) => void
   setActiveAgent: (id: string | null) => void
-  addConversation: (agentId: string) => Conversation
+  addConversation: (agentId: string, participantIds?: string[]) => Conversation
   addMessage: (conversationId: string, message: Omit<Message, "id" | "createdAt">, saveToDb?: boolean) => Message
   updateLastMessage: (conversationId: string, content: string) => void
   removeLastAssistantMessage: (conversationId: string) => void
   deleteConversation: (id: string) => void
   renameConversation: (id: string, title: string) => void
   setConversationSystemPrompt: (conversationId: string, prompt: string) => void
+  addParticipant: (conversationId: string, agentId: string) => void
+  removeParticipant: (conversationId: string, agentId: string) => void
   saveAgent: (agent: Agent) => void
   deleteAgent: (id: string) => void
   togglePinAgent: (id: string) => void
@@ -57,12 +59,22 @@ export const useAppStore = create<AppState>()(
       setActiveConversation: (id) => set({ activeConversationId: id }),
       setActiveAgent: (id) => set({ activeAgentId: id }),
 
-      addConversation: (agentId) => {
-        const agent = get().agents.find((a) => a.id === agentId)
+      addConversation: (agentId, participantIds) => {
+        const allAgents = get().agents
+        const agent = allAgents.find((a) => a.id === agentId)
+        // 確保主 agent 在參與者清單首位、去重
+        const parts = participantIds && participantIds.length > 0
+          ? [agentId, ...participantIds.filter((id) => id !== agentId)]
+          : [agentId]
+        const isMeeting = parts.length > 1
+        const title = isMeeting
+          ? `會議：${parts.map((id) => allAgents.find((a) => a.id === id)?.name || "Agent").join("、")}`
+          : `與 ${agent?.name || "Agent"} 的對話`
         const newConv: Conversation = {
           id: `conv-${Date.now()}`,
           agentId,
-          title: `與 ${agent?.name || "Agent"} 的對話`,
+          participantIds: parts,
+          title,
           messages: [],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -73,7 +85,7 @@ export const useAppStore = create<AppState>()(
         }))
         api("/api/conversations", {
           method: "POST",
-          body: JSON.stringify({ id: newConv.id, agentId: newConv.agentId, title: newConv.title }),
+          body: JSON.stringify({ id: newConv.id, agentId: newConv.agentId, participantIds: newConv.participantIds, title: newConv.title }),
         })
         return newConv
       },
@@ -112,6 +124,7 @@ export const useAppStore = create<AppState>()(
               id: newMsg.id,
               conversationId,
               role: newMsg.role,
+              agentId: newMsg.agentId,
               content: newMsg.content,
             }),
           })
@@ -170,6 +183,41 @@ export const useAppStore = create<AppState>()(
             conv.id === conversationId ? { ...conv, systemPromptOverride: prompt } : conv
           ),
         }))
+      },
+
+      addParticipant: (conversationId, agentId) => {
+        const conv = get().conversations.find((c) => c.id === conversationId)
+        if (!conv) return
+        const current = conv.participantIds ?? [conv.agentId]
+        if (current.includes(agentId)) return
+        const next = [...current, agentId]
+        set((state) => ({
+          conversations: state.conversations.map((c) =>
+            c.id === conversationId ? { ...c, participantIds: next } : c
+          ),
+        }))
+        api(`/api/conversations/${conversationId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ participantIds: next }),
+        })
+      },
+
+      removeParticipant: (conversationId, agentId) => {
+        const conv = get().conversations.find((c) => c.id === conversationId)
+        if (!conv) return
+        const current = conv.participantIds ?? [conv.agentId]
+        // 保底：至少留一位參與者
+        if (current.length <= 1) return
+        const next = current.filter((id) => id !== agentId)
+        set((state) => ({
+          conversations: state.conversations.map((c) =>
+            c.id === conversationId ? { ...c, participantIds: next } : c
+          ),
+        }))
+        api(`/api/conversations/${conversationId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ participantIds: next }),
+        })
       },
 
       saveAgent: (agent) => {

@@ -7,7 +7,7 @@ import { hashPassword } from "@/lib/session"
 export async function GET() {
   const db = getDb()
   const rows = await db
-    .select({ id: users.id, username: users.username, role: users.role, createdAt: users.createdAt })
+    .select({ id: users.id, username: users.username, role: users.role, displayName: users.displayName, avatar: users.avatar, createdAt: users.createdAt })
     .from(users)
   return NextResponse.json(rows.map(r => ({ ...r, createdAt: r.createdAt?.toISOString() })))
 }
@@ -17,6 +17,8 @@ export async function POST(req: NextRequest) {
   const username: string = (body.username ?? "").trim()
   const password: string = body.password ?? ""
   const role: "admin" | "user" = body.role === "admin" ? "admin" : "user"
+  const displayName: string = (body.displayName ?? "").trim() || username
+  const avatar: string = (body.avatar ?? "").trim() || "👤"
 
   if (!username || !password) {
     return NextResponse.json({ error: "帳號與密碼為必填" }, { status: 400 })
@@ -37,6 +39,8 @@ export async function POST(req: NextRequest) {
     username,
     passwordHash: hash,
     role,
+    displayName,
+    avatar,
   })
   return NextResponse.json({ ok: true })
 }

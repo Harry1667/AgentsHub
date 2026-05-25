@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { useAppStore } from "@/lib/store"
+import { Agent } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
@@ -15,10 +16,11 @@ import {
 } from "@/components/ui/dialog"
 import {
   Send, User, Sparkles, Plus, AlertCircle, Copy, Check, RefreshCw,
-  Bookmark, BookmarkCheck, Download, Settings, Pencil,
+  Bookmark, BookmarkCheck, Download, Settings, Pencil, Users, X, AtSign, ArrowLeft,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
+import { usePageTitle } from "@/components/page-header"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
@@ -59,11 +61,11 @@ async function* readSSEStream(response: Response): AsyncGenerator<{
   }
 }
 
-function TypingIndicator() {
+function TypingIndicator({ avatar }: { avatar?: string }) {
   return (
     <div className="flex gap-3 py-4">
       <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center shrink-0 text-base">
-        🤖
+        {avatar || "🤖"}
       </div>
       <div className="flex items-center gap-1 bg-muted rounded-2xl rounded-tl-sm px-4 py-3">
         <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
@@ -156,22 +158,20 @@ function AssistantMarkdown({ content }: { content: string }) {
 }
 
 function MessageBubble({
-  messageId,
-  conversationId,
   role,
   content,
   avatar,
+  speakerName,
   isLast,
   createdAt,
   bookmarked,
   onRegenerate,
   onBookmark,
 }: {
-  messageId: string
-  conversationId: string
   role: "user" | "assistant"
   content: string
   avatar?: string
+  speakerName?: string
   isLast?: boolean
   createdAt: string
   bookmarked?: boolean
@@ -202,6 +202,10 @@ function MessageBubble({
       </div>
 
       <div className={cn("flex flex-col gap-1 max-w-[70%]", isUser && "items-end")}>
+        {/* 會議模式：發言者名稱 */}
+        {!isUser && speakerName && (
+          <span className="text-[11px] font-medium text-muted-foreground px-1">{speakerName}</span>
+        )}
         {/* Bubble */}
         <div className={cn(
           "relative rounded-2xl px-4 py-3 text-sm leading-relaxed break-words",
@@ -255,6 +259,34 @@ function MessageBubble({
   )
 }
 
+// 解析輸入中的 @點名，回傳被點到的參與者（依出現順序、去重）
+function parseMentions(text: string, participants: Agent[]): Agent[] {
+  const found: { agent: Agent; idx: number }[] = []
+  for (const a of participants) {
+    const idx = text.indexOf(`@${a.name}`)
+    if (idx !== -1) found.push({ agent: a, idx })
+  }
+  return found.sort((x, y) => x.idx - y.idx).map((f) => f.agent)
+}
+
+// 把完整對話組成逐字稿給 agent 閱讀
+function buildTranscript(
+  messages: { role: "user" | "assistant"; content: string; agentId?: string }[],
+  agents: Agent[],
+): string {
+  return messages
+    .map((m) => {
+      const { text } = parseProviderSuffix(m.content)
+      if (!text.trim()) return null
+      const speaker = m.role === "user"
+        ? "使用者"
+        : (agents.find((a) => a.id === m.agentId)?.name ?? "AI")
+      return `${speaker}：${text}`
+    })
+    .filter(Boolean)
+    .join("\n\n")
+}
+
 interface ChatInterfaceProps {
   conversationId?: string
 }
@@ -263,12 +295,14 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const router = useRouter()
   const {
     conversations, agents, addMessage, updateLastMessage, removeLastAssistantMessage,
-    addConversation, setActiveConversation, saveAgent,
+    addConversation, setActiveConversation,
     renameConversation, setConversationSystemPrompt, toggleBookmarkMessage,
+    addParticipant, removeParticipant,
   } = useAppStore()
 
   const [input, setInput] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
+  const [respondingAgentId, setRespondingAgentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedProvider, setSelectedProvider] = useState<ProviderOption>("auto")
 
@@ -280,12 +314,34 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [showSystemPrompt, setShowSystemPrompt] = useState(false)
   const [editedSystemPrompt, setEditedSystemPrompt] = useState("")
 
+  // 與會者管理
+  const [showParticipants, setShowParticipants] = useState(false)
+  // @mention 自動完成
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null)
+
   const scrollRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const conversation = conversations.find((c) => c.id === conversationId)
-  const agent = conversation ? agents.find((a) => a.id === conversation.agentId) : agents[0]
+
+  // 與會者清單（含主 agent）；無對話時 fallback 第一個 agent
+  const participantIds = conversation
+    ? (conversation.participantIds?.length ? conversation.participantIds : [conversation.agentId])
+    : (agents[0] ? [agents[0].id] : [])
+  const participants = participantIds
+    .map((id) => agents.find((a) => a.id === id))
+    .filter((a): a is Agent => !!a)
+  const primaryAgent = participants[0] ?? agents[0]
+  const isMeeting = participants.length > 1
+  const agent = primaryAgent // header 主顯示
+
+  // 頁面命名：對話標題 →（無則）agent 名稱
+  usePageTitle(
+    conversation?.title
+    || (isMeeting ? "會議" : agent ? `與 ${agent.name} 對話` : "對話")
+  )
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -301,12 +357,12 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   }, [editingTitle])
 
   const handleNewChat = useCallback(() => {
-    const a = agent || agents[0]
+    const a = primaryAgent || agents[0]
     if (!a) return
     const conv = addConversation(a.id)
     setActiveConversation(conv.id)
     router.push(`/chat/${conv.id}`)
-  }, [agent, agents, addConversation, setActiveConversation, router])
+  }, [primaryAgent, agents, addConversation, setActiveConversation, router])
 
   // Cmd+N → new chat
   useEffect(() => {
@@ -321,21 +377,23 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   }, [handleNewChat])
 
   const handleExport = useCallback(() => {
-    if (!conversation || !agent) return
+    if (!conversation) return
     const lines = [
       `# ${conversation.title}`,
       ``,
-      `> **Agent:** ${agent.avatar} ${agent.name}`,
+      `> **與會者:** ${participants.map((p) => `${p.avatar} ${p.name}`).join("、")}`,
       `> **匯出時間:** ${new Date().toLocaleString("zh-TW")}`,
       ``,
       `---`,
       ``,
     ]
     for (const msg of conversation.messages) {
-      const roleLabel = msg.role === "user" ? "## 你" : `## ${agent.name}`
+      const speaker = msg.role === "user"
+        ? "你"
+        : (agents.find((a) => a.id === msg.agentId)?.name ?? "AI")
       const t = new Date(msg.createdAt).toLocaleString("zh-TW")
       const { text } = parseProviderSuffix(msg.content)
-      lines.push(roleLabel, `*${t}*`, ``, text, ``, `---`, ``)
+      lines.push(`## ${speaker}`, `*${t}*`, ``, text, ``, `---`, ``)
     }
     const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" })
     const url = URL.createObjectURL(blob)
@@ -344,7 +402,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     a.download = `${conversation.title.replace(/[/\\?%*:|"<>]/g, "-")}.md`
     a.click()
     URL.revokeObjectURL(url)
-  }, [conversation, agent])
+  }, [conversation, participants, agents])
 
   const handleRenameCommit = () => {
     if (titleInput.trim() && conversationId) {
@@ -354,7 +412,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   }
 
   const handleOpenSystemPrompt = () => {
-    setEditedSystemPrompt(conversation?.systemPromptOverride ?? agent?.systemPrompt ?? "")
+    setEditedSystemPrompt(conversation?.systemPromptOverride ?? primaryAgent?.systemPrompt ?? "")
     setShowSystemPrompt(true)
   }
 
@@ -365,20 +423,41 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     setShowSystemPrompt(false)
   }
 
-  const callProxy = async (convId: string, userPrompt: string) => {
+  // 單一 agent 發言：組脈絡 → 呼叫 proxy → 串流 → 歸屬發言者
+  const respondWithAgent = async (
+    convId: string,
+    respondAgent: Agent,
+    allParticipants: Agent[],
+    directUserPrompt?: string,
+  ) => {
     abortRef.current = new AbortController()
+    setRespondingAgentId(respondAgent.id)
 
-    const conv = conversations.find((c) => c.id === convId)
-    const systemPrompt = conv?.systemPromptOverride ?? agent?.systemPrompt ?? ""
+    const conv = useAppStore.getState().conversations.find((c) => c.id === convId)
+    const meeting = allParticipants.length > 1
+
+    let systemPrompt: string
+    let prompt: string
+
+    if (meeting) {
+      const others = allParticipants
+        .filter((a) => a.id !== respondAgent.id)
+        .map((a) => a.name)
+      const framing = `你正在參加一場多人會議。你的身分是「${respondAgent.name}」。其他與會者：${others.join("、") || "（無）"}。請只以「${respondAgent.name}」的身分發言，依據完整會議記錄回應，不要代替其他與會者發言，回應精簡切題、針對最新的討論。`
+      systemPrompt = [respondAgent.systemPrompt, framing].filter(Boolean).join("\n\n")
+      const transcript = buildTranscript(conv?.messages ?? [], agents)
+      prompt = `以下是目前的會議記錄：\n\n${transcript}\n\n請以「${respondAgent.name}」的身分接著發言。`
+    } else {
+      systemPrompt = conv?.systemPromptOverride ?? respondAgent.systemPrompt ?? ""
+      prompt = directUserPrompt ?? ""
+    }
 
     const body: Record<string, string> = {
-      prompt: userPrompt,
+      prompt,
       systemPrompt,
-      group: agent?.name || "chat",
+      group: respondAgent.name || "chat",
     }
-    if (selectedProvider !== "auto") {
-      body.provider = selectedProvider
-    }
+    if (selectedProvider !== "auto") body.provider = selectedProvider
 
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -392,7 +471,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       throw new Error(err.error || `HTTP ${res.status}`)
     }
 
-    const assistantMsg = addMessage(convId, { role: "assistant", content: "" })
+    const assistantMsg = addMessage(convId, { role: "assistant", content: "", agentId: respondAgent.id })
     let accumulated = ""
     let providerSuffix = ""
 
@@ -418,6 +497,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         id: assistantMsg.id,
         conversationId: convId,
         role: "assistant",
+        agentId: respondAgent.id,
         content: finalContent,
       }),
     }).catch(console.error)
@@ -428,28 +508,39 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     if (!trimmed || isStreaming) return
 
     let convId = conversationId
+    let activeParticipants = participants
     if (!convId || !conversation) {
-      const defaultAgent = agent || agents[0]
+      const defaultAgent = primaryAgent || agents[0]
       if (!defaultAgent) return
       const newConv = addConversation(defaultAgent.id)
       convId = newConv.id
+      activeParticipants = [defaultAgent]
       setActiveConversation(convId)
       router.push(`/chat/${convId}`)
     }
 
+    // 決定回覆者：有 @點名 → 被點到的；否則 → 主 agent
+    const mentioned = parseMentions(trimmed, activeParticipants)
+    const responders = mentioned.length > 0 ? mentioned : [primaryAgent].filter(Boolean) as Agent[]
+    if (responders.length === 0) return
+
     if (!promptOverride) {
       addMessage(convId, { role: "user", content: trimmed }, true)
       setInput("")
+      setMentionQuery(null)
     }
     setError(null)
     setIsStreaming(true)
 
     try {
-      await callProxy(convId, trimmed)
+      for (const responder of responders) {
+        await respondWithAgent(convId, responder, activeParticipants, trimmed)
+      }
     } catch (e: unknown) {
       if (e instanceof Error && e.name !== "AbortError") setError(e.message)
     } finally {
       setIsStreaming(false)
+      setRespondingAgentId(null)
     }
   }
 
@@ -461,17 +552,47 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user")
     if (!lastUserMsg) return
 
+    // 用原發言者重新生成（會議模式）；否則主 agent
+    const responder = agents.find((a) => a.id === lastAssistant.agentId) ?? primaryAgent
+    if (!responder) return
+
     removeLastAssistantMessage(conversationId)
     setError(null)
     setIsStreaming(true)
 
     try {
-      await callProxy(conversationId, lastUserMsg.content)
+      await respondWithAgent(conversationId, responder, participants, lastUserMsg.content)
     } catch (e: unknown) {
       if (e instanceof Error && e.name !== "AbortError") setError(e.message)
     } finally {
       setIsStreaming(false)
+      setRespondingAgentId(null)
     }
+  }
+
+  // 輸入變更：偵測 @mention 查詢字
+  const handleInputChange = (value: string) => {
+    setInput(value)
+    const caret = textareaRef.current?.selectionStart ?? value.length
+    const upToCaret = value.slice(0, caret)
+    const m = upToCaret.match(/@([^\s@]*)$/)
+    setMentionQuery(m ? m[1] : null)
+  }
+
+  // 點選 @mention 候選：把游標前的 @query 換成 @Name
+  const insertMention = (a: Agent) => {
+    const el = textareaRef.current
+    const caret = el?.selectionStart ?? input.length
+    const before = input.slice(0, caret).replace(/@([^\s@]*)$/, `@${a.name} `)
+    const after = input.slice(caret)
+    const next = before + after
+    setInput(next)
+    setMentionQuery(null)
+    requestAnimationFrame(() => {
+      el?.focus()
+      const pos = before.length
+      el?.setSelectionRange(pos, pos)
+    })
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -483,14 +604,64 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const lastMsg = messages[messages.length - 1]
   const lastIsAssistant = lastMsg?.role === "assistant"
 
+  // @mention 候選清單
+  const mentionCandidates = mentionQuery !== null
+    ? participants.filter((p) => p.name.toLowerCase().includes(mentionQuery.toLowerCase()))
+    : []
+
+  const respondingAgent = respondingAgentId
+    ? agents.find((a) => a.id === respondingAgentId)
+    : undefined
+
+  const availableToAdd = agents.filter((a) => !participantIds.includes(a.id))
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       {agent && (
         <div className="flex items-center gap-3 px-6 py-4 border-b shrink-0">
-          <span className="text-xl">{agent.avatar}</span>
+          {/* 返回對話工作區 */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={() => router.push("/chat")}
+            title="返回對話工作區"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          {/* 與會者頭像堆疊 */}
+          <button
+            onClick={() => !isEmpty && conversation && setShowParticipants(true)}
+            className="flex -space-x-2 shrink-0 items-center"
+            title={isMeeting ? "管理與會者" : undefined}
+          >
+            {participants.slice(0, 4).map((p) => (
+              <span
+                key={p.id}
+                className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900 ring-2 ring-background flex items-center justify-center text-base"
+              >
+                {p.avatar}
+              </span>
+            ))}
+            {participants.length > 4 && (
+              <span className="w-8 h-8 rounded-full bg-muted ring-2 ring-background flex items-center justify-center text-[10px] font-medium">
+                +{participants.length - 4}
+              </span>
+            )}
+          </button>
+
           <div className="flex-1 min-w-0">
-            <h2 className="font-semibold text-sm">{agent.name}</h2>
+            <div className="flex items-center gap-1.5">
+              <h2 className="font-semibold text-sm truncate">
+                {isMeeting ? participants.map((p) => p.name).join("、") : agent.name}
+              </h2>
+              {isMeeting && (
+                <Badge variant="secondary" className="gap-1 shrink-0 text-[10px] px-1.5 py-0">
+                  <Users className="w-2.5 h-2.5" />會議
+                </Badge>
+              )}
+            </div>
             {editingTitle && conversation ? (
               <Input
                 ref={titleInputRef}
@@ -526,6 +697,9 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
           <div className="flex items-center gap-1">
             {!isEmpty && (
               <>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowParticipants(true)} title="管理與會者">
+                  <Users className="w-3.5 h-3.5" />
+                </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleOpenSystemPrompt} title="編輯 System Prompt">
                   <Settings className="w-3.5 h-3.5" />
                 </Button>
@@ -566,22 +740,28 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
             </div>
           ) : (
             <>
-              {messages.map((msg, idx) => (
-                <MessageBubble
-                  key={msg.id}
-                  messageId={msg.id}
-                  conversationId={conversationId ?? ""}
-                  role={msg.role}
-                  content={msg.content}
-                  avatar={agent?.avatar}
-                  isLast={idx === messages.length - 1}
-                  createdAt={msg.createdAt}
-                  bookmarked={msg.bookmarked}
-                  onRegenerate={idx === messages.length - 1 && lastIsAssistant && !isStreaming ? handleRegenerate : undefined}
-                  onBookmark={conversationId ? () => toggleBookmarkMessage(conversationId, msg.id) : undefined}
-                />
-              ))}
-              {isStreaming && messages[messages.length - 1]?.role === "user" && <TypingIndicator />}
+              {messages.map((msg, idx) => {
+                const speaker = msg.role === "assistant"
+                  ? agents.find((a) => a.id === msg.agentId)
+                  : undefined
+                return (
+                  <MessageBubble
+                    key={msg.id}
+                    role={msg.role}
+                    content={msg.content}
+                    avatar={speaker?.avatar ?? primaryAgent?.avatar}
+                    speakerName={isMeeting && msg.role === "assistant" ? (speaker?.name ?? "AI") : undefined}
+                    isLast={idx === messages.length - 1}
+                    createdAt={msg.createdAt}
+                    bookmarked={msg.bookmarked}
+                    onRegenerate={idx === messages.length - 1 && lastIsAssistant && !isStreaming ? handleRegenerate : undefined}
+                    onBookmark={conversationId ? () => toggleBookmarkMessage(conversationId, msg.id) : undefined}
+                  />
+                )
+              })}
+              {isStreaming && messages[messages.length - 1]?.role === "user" && (
+                <TypingIndicator avatar={respondingAgent?.avatar ?? primaryAgent?.avatar} />
+              )}
             </>
           )}
 
@@ -596,13 +776,51 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       {/* Input */}
       <div className="px-4 pb-4 shrink-0">
         <div className="max-w-3xl mx-auto">
+          {/* 會議模式提示 + 快速 @點名 chips */}
+          {isMeeting && (
+            <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+              <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                <AtSign className="w-3 h-3" />點名發言：
+              </span>
+              {participants.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    const next = `${input}${input && !input.endsWith(" ") ? " " : ""}@${p.name} `
+                    setInput(next)
+                    textareaRef.current?.focus()
+                  }}
+                  className="px-2 py-0.5 rounded-full text-[11px] bg-muted hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors"
+                >
+                  {p.avatar} {p.name}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="relative flex flex-col gap-2 rounded-2xl border bg-background shadow-sm px-4 py-3 focus-within:ring-2 focus-within:ring-amber-300">
+            {/* @mention 自動完成 */}
+            {mentionCandidates.length > 0 && (
+              <div className="absolute bottom-full left-2 mb-2 w-56 bg-popover border rounded-xl shadow-lg overflow-hidden z-10">
+                {mentionCandidates.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => insertMention(p)}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted text-left"
+                  >
+                    <span className="text-base">{p.avatar}</span>
+                    <span className="truncate">{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="flex items-end gap-2">
               <Textarea
+                ref={textareaRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={isStreaming ? "AI 回應中..." : "輸入訊息… (Enter 送出，Shift+Enter 換行)"}
+                placeholder={isStreaming ? "AI 回應中..." : isMeeting ? "輸入訊息，用 @ 點名與會者…" : "輸入訊息… (Enter 送出，Shift+Enter 換行)"}
                 className="flex-1 border-0 shadow-none resize-none focus-visible:ring-0 min-h-[24px] max-h-[200px] p-0 text-sm"
                 rows={1}
                 disabled={isStreaming}
@@ -642,6 +860,72 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         </div>
       </div>
 
+      {/* 與會者管理 Dialog */}
+      <Dialog open={showParticipants} onOpenChange={setShowParticipants}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-4 h-4" />會議與會者
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-2">
+            加入多個 Agent 組成會議，發言時用 <span className="font-mono">@名稱</span> 點名回覆。
+          </p>
+
+          {/* 目前與會者 */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">目前與會者（{participants.length}）</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {participants.map((p) => (
+                <span key={p.id} className="flex items-center gap-1 pl-2 pr-1 py-1 rounded-full bg-muted text-xs">
+                  {p.avatar} {p.name}
+                  {participants.length > 1 && conversationId && (
+                    <button
+                      onClick={() => removeParticipant(conversationId, p.id)}
+                      className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10"
+                      title="移除"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* 可加入的 Agent */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">加入 Agent</Label>
+            {availableToAdd.length === 0 ? (
+              <p className="text-xs text-muted-foreground">沒有其他可加入的 Agent。</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-1 max-h-60 overflow-y-auto">
+                {availableToAdd.map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => conversationId && addParticipant(conversationId, a.id)}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted text-left text-sm"
+                  >
+                    <span className="text-base">{a.avatar}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block truncate">{a.name}</span>
+                      <span className="block truncate text-[11px] text-muted-foreground">{a.description}</span>
+                    </span>
+                    <Plus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-1">
+            <Button onClick={() => setShowParticipants(false)} className="bg-amber-700 hover:bg-amber-800 text-white">
+              完成
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* System Prompt Dialog */}
       <Dialog open={showSystemPrompt} onOpenChange={setShowSystemPrompt}>
         <DialogContent className="sm:max-w-lg">
@@ -649,7 +933,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
             <DialogTitle>快速編輯 System Prompt</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground -mt-2">
-            此修改僅套用於本次對話，不影響 Agent 的全域設定。
+            此修改僅套用於本次對話（單一 Agent 模式），不影響 Agent 的全域設定。
           </p>
           <div className="space-y-2">
             <Label>System Prompt</Label>

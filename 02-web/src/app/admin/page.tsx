@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Shield, Trash2, Plus, Key, Users } from "lucide-react"
+import { Shield, Trash2, Plus, Key, Users, ArrowLeft } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { usePageTitle } from "@/components/page-header"
 
 interface User {
   id: string
@@ -17,6 +19,8 @@ interface User {
 }
 
 export default function AdminPage() {
+  const router = useRouter()
+  usePageTitle("用戶管理")
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
@@ -92,6 +96,13 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-3xl mx-auto">
+        <button
+          onClick={() => router.push("/chat")}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-4 transition-colors"
+        >
+          <ArrowLeft className="w-3 h-3" />
+          返回 AgentHub
+        </button>
         <div className="flex items-center gap-3 mb-8">
           <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
             <Shield className="w-5 h-5 text-amber-700 dark:text-amber-400" />

@@ -12,6 +12,7 @@ import { Slider } from "@/components/ui/slider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Plus, X } from "lucide-react"
+import { usePageTitle } from "@/components/page-header"
 
 const MODELS = [
   { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 (快速)" },
@@ -41,6 +42,7 @@ interface AgentFormProps {
 export function AgentForm({ existingAgent }: AgentFormProps) {
   const router = useRouter()
   const { saveAgent } = useAppStore()
+  usePageTitle(existingAgent ? "編輯 Agent" : "建立 Agent")
 
   const [form, setForm] = useState<Omit<Agent, "createdAt" | "useCount" | "isDefault">>({
     id: existingAgent?.id || `agent-${Date.now()}`,
@@ -75,12 +77,17 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="border-b px-6 py-4 flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+        <Button variant="ghost" size="icon" onClick={() => router.push("/agents")} title="返回我的 Agent">
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
+          <button
+            onClick={() => router.push("/agents")}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            我的 Agent
+          </button>
           <h1 className="font-bold text-lg">{existingAgent ? "編輯 Agent" : "建立 Agent"}</h1>
-          <p className="text-muted-foreground text-sm">設定你的 AI 助手個性與能力</p>
         </div>
         <Button
           className="ml-auto bg-amber-700 hover:bg-amber-800 text-white"
