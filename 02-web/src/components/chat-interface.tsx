@@ -16,11 +16,25 @@ import {
 } from "@/components/ui/dialog"
 import {
   Send, User, Sparkles, Plus, AlertCircle, Copy, Check, RefreshCw,
-  Bookmark, BookmarkCheck, Download, Settings, Pencil, Users, X, AtSign, ArrowLeft, Wand2,
+  Bookmark, BookmarkCheck, Download, Settings, Pencil, Users, X, AtSign, ArrowLeft, Wand2, Paperclip, FileText,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { usePageTitle } from "@/components/page-header"
+import { extractFileText, isSupportedFile } from "@/lib/extract-file"
+
+// 附件分隔標記：使用者訊息 content 內嵌附件文字，前段為打字內容
+const ATTACH_SEP = "\n\n===📎附件："
+
+// 從使用者訊息解析出純文字 + 附件名（供顯示 chips、隱藏附件正文）
+function parseUserAttachments(content: string): { text: string; names: string[] } {
+  const idx = content.indexOf(ATTACH_SEP)
+  if (idx === -1) return { text: content, names: [] }
+  const text = content.slice(0, idx)
+  const m = content.slice(idx).match(/===📎附件：(.*?)===/)
+  const names = m ? m[1].split("、").filter(Boolean) : []
+  return { text, names }
+}
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
@@ -288,7 +302,25 @@ function MessageBubble({
             ? "bg-amber-700 text-white rounded-tr-sm whitespace-pre-wrap"
             : "bg-muted rounded-tl-sm"
         )}>
-          {isUser ? content : (
+          {isUser ? (
+            (() => {
+              const { text: utext, names } = parseUserAttachments(content)
+              return (
+                <div className="whitespace-pre-wrap">
+                  {names.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {names.map((n, i) => (
+                        <span key={i} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/20 text-xs">
+                          <FileText className="w-3 h-3" />{n}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {utext}
+                </div>
+              )
+            })()
+          ) : (
             <div>
               {paragraphs.map((para, i) => (
                 <div key={i} className="relative group/para">
@@ -452,6 +484,10 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [showParticipants, setShowParticipants] = useState(false)
   // @mention 自動完成
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
+  // 附件（文字檔/PDF 抽出的文字）
+  const [attachments, setAttachments] = useState<{ name: string; text: string }[]>([])
+  const [attaching, setAttaching] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -702,9 +738,28 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     return cleaned
   }
 
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    setError(null); setAttaching(true)
+    try {
+      for (const file of Array.from(files)) {
+        if (!isSupportedFile(file)) { setError(`不支援的檔案：${file.name}（僅文字檔/PDF）`); continue }
+        const text = await extractFileText(file)
+        if (!text.trim()) { setError(`無法從 ${file.name} 取得文字`); continue }
+        setAttachments((prev) => [...prev, { name: file.name, text }])
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? `檔案解析失敗：${e.message}` : "檔案解析失敗")
+    } finally {
+      setAttaching(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
   const handleSend = async (promptOverride?: string) => {
     const trimmed = (promptOverride ?? input).trim()
-    if (!trimmed || isStreaming) return
+    // 允許只有附件、沒打字也能送
+    if ((!trimmed && attachments.length === 0) || isStreaming) return
 
     let convId = conversationId
     let activeParticipants = participants
@@ -718,14 +773,21 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       router.push(`/chat/${convId}`)
     }
 
+    // 把附件文字併入要送出的內容（AI 讀得到；重載也能解析顯示）
+    const outgoing = (!promptOverride && attachments.length > 0)
+      ? `${trimmed}${ATTACH_SEP}${attachments.map((a) => a.name).join("、")}===\n` +
+        attachments.map((a) => `【${a.name}】\n${a.text}`).join("\n\n")
+      : trimmed
+
     // 決定回覆者：有 @點名 → 被點到的；否則 → 主 agent
     const mentioned = parseMentions(trimmed, activeParticipants)
     const responders = mentioned.length > 0 ? mentioned : [primaryAgent].filter(Boolean) as Agent[]
     if (responders.length === 0) return
 
     if (!promptOverride) {
-      addMessage(convId, { role: "user", content: trimmed }, true)
+      addMessage(convId, { role: "user", content: outgoing }, true)
       setInput("")
+      setAttachments([])
       setMentionQuery(null)
     }
     setError(null)
@@ -733,7 +795,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
     try {
       for (const responder of responders) {
-        await respondWithAgent(convId, responder, activeParticipants, trimmed)
+        await respondWithAgent(convId, responder, activeParticipants, outgoing)
       }
     } catch (e: unknown) {
       if (e instanceof Error && e.name !== "AbortError") setError(e.message)
@@ -1034,7 +1096,39 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 ))}
               </div>
             )}
+            {/* 附件 chips */}
+            {(attachments.length > 0 || attaching) && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {attachments.map((a, i) => (
+                  <span key={i} className="flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-muted text-xs">
+                    <FileText className="w-3 h-3 text-muted-foreground" />
+                    <span className="max-w-[140px] truncate">{a.name}</span>
+                    <button onClick={() => setAttachments((p) => p.filter((_, j) => j !== i))} className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10" title="移除">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+                {attaching && <span className="text-xs text-muted-foreground">解析檔案中…</span>}
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".txt,.md,.markdown,.csv,.tsv,.json,.yaml,.yml,.xml,.html,.js,.ts,.tsx,.jsx,.py,.java,.c,.cpp,.h,.go,.rs,.rb,.php,.sh,.sql,.css,.log,.pdf,text/*,application/pdf"
+              className="hidden"
+              onChange={(e) => handleFiles(e.target.files)}
+            />
             <div className="flex items-end gap-2">
+              <Button
+                variant="ghost" size="icon"
+                className="h-8 w-8 rounded-xl shrink-0 text-muted-foreground"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isStreaming || attaching}
+                title="上傳檔案（文字檔 / PDF）"
+              >
+                <Paperclip className="w-4 h-4" />
+              </Button>
               <Textarea
                 ref={textareaRef}
                 value={input}
@@ -1052,7 +1146,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   "h-8 w-8 rounded-xl shrink-0",
                   isStreaming ? "bg-red-500 hover:bg-red-600" : "bg-amber-700 hover:bg-amber-800 disabled:opacity-40"
                 )}
-                disabled={!isStreaming && !input.trim()}
+                disabled={!isStreaming && !input.trim() && attachments.length === 0}
               >
                 {isStreaming
                   ? <span className="w-3 h-3 rounded-sm bg-white" />

@@ -16,6 +16,15 @@ import { cn } from "@/lib/utils"
 import { Agent, Conversation } from "@/lib/types"
 import { PageHeader } from "@/components/page-header"
 import { OfficeView } from "@/components/office-view"
+import { OnboardingTour, type TourStep } from "@/components/onboarding-tour"
+
+const TOUR_STEPS: TourStep[] = [
+  { selector: "[data-tour=new-chat]", title: "隨時開新對話", body: "點這裡用最近的 Agent 立刻開一段新對話。" },
+  { selector: "[data-tour=recent]", title: "所有對話都在這", body: "跨 Agent 的最近對話列表，一鍵跳回任何一段，包含會議。" },
+  { selector: "[data-tour=view-toggle]", title: "兩種檢視", body: "卡片或像素辦公室。點任一個 Agent 就直接進入最近的對話。" },
+  { selector: "[data-tour=meeting]", title: "多人會議", body: "進會議室找多個 Agent 一起討論，發言時用 @ 點名。" },
+  { title: "準備好了！", body: "對話中還能上傳檔案、切換模型、重寫段落。開始玩玩看吧 🎉" },
+]
 
 // 多 agent 會議判定
 function isMeetingConv(c: Conversation): boolean {
@@ -146,6 +155,7 @@ function AgentCard({
 function MeetingRoomCard({ count, onClick }: { count: number; onClick: () => void }) {
   return (
     <button
+      data-tour="meeting"
       onClick={onClick}
       className="group text-left rounded-2xl overflow-hidden border border-transparent hover:border-white/60 dark:hover:border-white/20 hover:shadow-xl transition-all duration-200 hover:-translate-y-1 cursor-pointer w-full relative"
     >
@@ -176,7 +186,7 @@ function MeetingRoomCard({ count, onClick }: { count: number; onClick: () => voi
 
 export default function ChatPage() {
   const router = useRouter()
-  const { agents, conversations, addConversation, setActiveConversation, isLoaded, togglePinAgent, workspaceView, setWorkspaceView } = useAppStore()
+  const { agents, conversations, addConversation, setActiveConversation, isLoaded, togglePinAgent, workspaceView, setWorkspaceView, onboarded, setOnboarded } = useAppStore()
 
   // 會議室
   const [meetingOpen, setMeetingOpen] = useState(false)
@@ -257,7 +267,7 @@ export default function ChatPage() {
         title="對話工作區"
         subtitle="選擇一個 Agent 開始對話，或進入會議室發起多人討論"
         actions={
-          <div className="flex items-center rounded-lg border p-0.5">
+          <div data-tour="view-toggle" className="flex items-center rounded-lg border p-0.5">
             <button
               onClick={() => setWorkspaceView("grid")}
               className={cn("flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs transition-colors",
@@ -418,6 +428,11 @@ export default function ChatPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* 首次登入：互動式新手導覽 */}
+      {isLoaded && !onboarded && agents.length > 0 && (
+        <OnboardingTour steps={TOUR_STEPS} onDone={() => setOnboarded(true)} />
+      )}
     </div>
   )
 }

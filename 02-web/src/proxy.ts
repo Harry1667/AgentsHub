@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 const COOKIE_NAME = "ah_session"
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout", "/api/auth/users"]
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout", "/api/auth/users", "/api/auth/register"]
 const ADMIN_PATHS = ["/admin", "/api/admin/"]
 
 async function hmac(secret: string, data: string): Promise<string> {
