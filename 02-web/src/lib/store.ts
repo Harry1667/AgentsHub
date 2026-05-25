@@ -10,14 +10,17 @@ interface AppState {
   theme: "light" | "dark"
   sidebarOpen: boolean
   isLoaded: boolean
+  defaultModel: string  // 對話預設模型（""=跟隨 Agent；可在對話中臨時覆寫）
 
   loadFromDb: () => Promise<void>
+  setDefaultModel: (model: string) => void
   setActiveConversation: (id: string | null) => void
   setActiveAgent: (id: string | null) => void
   addConversation: (agentId: string, participantIds?: string[]) => Conversation
   addMessage: (conversationId: string, message: Omit<Message, "id" | "createdAt">, saveToDb?: boolean) => Message
   updateLastMessage: (conversationId: string, content: string) => void
   updateMessageContent: (conversationId: string, messageId: string, content: string) => void
+  setMessageMeta: (conversationId: string, messageId: string, meta: { actualProvider?: string; actualModel?: string }) => void
   removeLastAssistantMessage: (conversationId: string) => void
   deleteConversation: (id: string) => void
   renameConversation: (id: string, title: string) => void
@@ -48,6 +51,7 @@ export const useAppStore = create<AppState>()(
       theme: "light",
       sidebarOpen: true,
       isLoaded: false,
+      defaultModel: "",
 
       loadFromDb: async () => {
         const [agentsData, convsData] = await Promise.all([
@@ -165,6 +169,20 @@ export const useAppStore = create<AppState>()(
           method: "PATCH",
           body: JSON.stringify({ id: messageId, content }),
         })
+      },
+
+      setMessageMeta: (conversationId, messageId, meta) => {
+        set((state) => ({
+          conversations: state.conversations.map((conv) => {
+            if (conv.id !== conversationId) return conv
+            return {
+              ...conv,
+              messages: conv.messages.map((m) =>
+                m.id === messageId ? { ...m, ...meta } : m
+              ),
+            }
+          }),
+        }))
       },
 
       removeLastAssistantMessage: (conversationId) => {
@@ -286,10 +304,12 @@ export const useAppStore = create<AppState>()(
         set((state) => ({ theme: state.theme === "light" ? "dark" : "light" })),
 
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+
+      setDefaultModel: (model) => set({ defaultModel: model }),
     }),
     {
       name: "agent-store",
-      partialize: (s) => ({ theme: s.theme }),
+      partialize: (s) => ({ theme: s.theme, defaultModel: s.defaultModel }),
     }
   )
 )

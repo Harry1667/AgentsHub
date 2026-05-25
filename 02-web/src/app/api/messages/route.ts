@@ -12,6 +12,8 @@ export async function POST(req: NextRequest) {
     role: body.role,
     agentId: body.agentId ?? null,
     content: body.content,
+    actualProvider: body.actualProvider ?? null,
+    actualModel: body.actualModel ?? null,
   })
   return NextResponse.json({ ok: true })
 }

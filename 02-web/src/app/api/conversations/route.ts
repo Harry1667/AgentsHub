@@ -42,6 +42,8 @@ export async function GET(req: NextRequest) {
         role: msg.role,
         agentId: msg.agentId ?? undefined,
         content: msg.content,
+        actualProvider: msg.actualProvider ?? undefined,
+        actualModel: msg.actualModel ?? undefined,
         createdAt: msg.createdAt?.toISOString() ?? new Date().toISOString(),
       })),
     }))

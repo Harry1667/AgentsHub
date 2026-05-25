@@ -176,6 +176,8 @@ function cleanRewrite(s: string): string {
 function MessageBubble({
   role,
   content,
+  actualProvider,
+  actualModel,
   avatar,
   speakerName,
   isLast,
@@ -189,6 +191,8 @@ function MessageBubble({
 }: {
   role: "user" | "assistant"
   content: string
+  actualProvider?: string
+  actualModel?: string
   avatar?: string
   speakerName?: string
   isLast?: boolean
@@ -213,9 +217,17 @@ function MessageBubble({
   const [rwPreview, setRwPreview] = useState<string | null>(null)
   const [rwError, setRwError] = useState<string | null>(null)
 
-  const { text: bodyText, provider: vProvider, model: vModel } = parseProviderSuffix(content)
+  // 新訊息用 metadata；舊訊息（content 內含 _via_ 後綴）才 fallback 解析
+  const hasMeta = !!actualProvider || !!actualModel
+  const parsed = hasMeta
+    ? { text: content, provider: actualProvider ?? null, model: actualModel ?? null }
+    : parseProviderSuffix(content)
+  const bodyText = parsed.text
+  const vProvider = parsed.provider
+  const vModel = parsed.model
   const paragraphs = bodyText.split(/\n\n+/)
-  const suffixStr = vProvider ? `\n\n_via ${vProvider}${vModel ? ` · ${vModel}` : ""}_` : ""
+  // 重組時要接回的後綴：新訊息無後綴（meta 分離）；舊訊息保留相容
+  const suffixStr = (!hasMeta && vProvider) ? `\n\n_via ${vProvider}${vModel ? ` · ${vModel}` : ""}_` : ""
   const canRewrite = !isUser && !!onRewriteRequest && !!onAcceptRewrite
 
   const closeRewrite = () => {
@@ -413,7 +425,7 @@ interface ChatInterfaceProps {
 export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const router = useRouter()
   const {
-    conversations, agents, addMessage, updateLastMessage, updateMessageContent, removeLastAssistantMessage,
+    conversations, agents, addMessage, updateLastMessage, updateMessageContent, setMessageMeta, removeLastAssistantMessage,
     addConversation, setActiveConversation,
     renameConversation, setConversationSystemPrompt, toggleBookmarkMessage,
     addParticipant, removeParticipant,
@@ -424,7 +436,8 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [respondingAgentId, setRespondingAgentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   // 對話內覆寫：模型（"" = 跟隨 agent 預設）、溫度（null = 跟隨 agent）
-  const [selectedModel, setSelectedModel] = useState<string>("")
+  // 初值取設定頁的「對話預設模型」
+  const [selectedModel, setSelectedModel] = useState<string>(() => useAppStore.getState().defaultModel)
   const [selectedTemp, setSelectedTemp] = useState<number | null>(null)
 
   // Rename title
@@ -610,7 +623,8 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
     const assistantMsg = addMessage(convId, { role: "assistant", content: "", agentId: respondAgent.id })
     let accumulated = ""
-    let providerSuffix = ""
+    let actualProvider: string | undefined
+    let actualModel: string | undefined
 
     for await (const chunk of readSSEStream(res)) {
       if (chunk.error) throw new Error(chunk.error)
@@ -618,14 +632,16 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         accumulated += chunk.delta
         updateLastMessage(convId, accumulated)
       }
-      if (chunk.done && chunk.actual_provider) {
-        providerSuffix = `\n\n_via ${chunk.actual_provider} · ${chunk.actual_model || ""}_`
-        updateLastMessage(convId, accumulated + providerSuffix)
+      if (chunk.done) {
+        actualProvider = chunk.actual_provider
+        actualModel = chunk.actual_model
       }
     }
 
-    const finalContent = accumulated ? accumulated + providerSuffix : "（無回應）"
+    const finalContent = accumulated || "（無回應）"
     if (!accumulated) updateLastMessage(convId, finalContent)
+    // provider/model 存成 metadata，不再混進 content
+    setMessageMeta(convId, assistantMsg.id, { actualProvider, actualModel })
 
     fetch("/api/messages", {
       method: "POST",
@@ -636,6 +652,8 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         role: "assistant",
         agentId: respondAgent.id,
         content: finalContent,
+        actualProvider,
+        actualModel,
       }),
     }).catch(console.error)
   }
@@ -938,6 +956,8 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     key={msg.id}
                     role={msg.role}
                     content={msg.content}
+                    actualProvider={msg.actualProvider}
+                    actualModel={msg.actualModel}
                     avatar={speaker?.avatar ?? primaryAgent?.avatar}
                     speakerName={isMeeting && msg.role === "assistant" ? (speaker?.name ?? "AI") : undefined}
                     isLast={idx === messages.length - 1}

@@ -22,6 +22,8 @@ export interface Message {
   createdAt: string
   bookmarked?: boolean
   agentId?: string  // assistant 訊息：發言的 agent（會議模式區分頭像）
+  actualProvider?: string  // 實際供應商（取代舊的 content 內 _via_ 後綴）
+  actualModel?: string     // 實際模型
 }
 
 export interface Conversation {

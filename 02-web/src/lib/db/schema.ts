@@ -42,5 +42,7 @@ export const messages = mysqlTable("messages", {
   role:           mysqlEnum("role", ["user", "assistant"]).notNull(),
   agentId:        varchar("agent_id", { length: 64 }),               // assistant 訊息歸屬的 agent
   content:        text("content").notNull(),
+  actualProvider: varchar("actual_provider", { length: 32 }),        // 實際供應商（取代 content 內的 _via_ 後綴）
+  actualModel:    varchar("actual_model", { length: 64 }),           // 實際模型
   createdAt:      timestamp("created_at").defaultNow(),
 })

@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
 
 export default function SettingsPage() {
-  const { theme, toggleTheme } = useAppStore()
+  const { theme, toggleTheme, defaultModel, setDefaultModel } = useAppStore()
   const router = useRouter()
 
   const [username, setUsername] = useState("")
@@ -111,6 +111,32 @@ export default function SettingsPage() {
                 <p className="text-xs text-muted-foreground">切換介面主題</p>
               </div>
               <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
+            </div>
+          </section>
+
+          <Separator />
+
+          <section>
+            <h2 className="text-base font-semibold mb-4">對話</h2>
+            <div className="flex items-center justify-between py-3 border-b gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">對話預設模型</p>
+                <p className="text-xs text-muted-foreground">新對話的起始模型，仍可在對話中臨時更改</p>
+              </div>
+              <select
+                value={defaultModel}
+                onChange={(e) => setDefaultModel(e.target.value)}
+                className="text-sm bg-muted rounded-lg px-3 py-1.5 outline-none cursor-pointer hover:bg-muted/80 shrink-0 max-w-[200px]"
+              >
+                <option value="">跟隨 Agent 設定</option>
+                <option value="auto">自動（跨供應商）</option>
+                <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5（快速）</option>
+                <option value="claude-sonnet-4-6">Claude Sonnet 4.6（均衡）</option>
+                <option value="claude-opus-4-7">Claude Opus 4.7（最強）</option>
+                <option value="gpt-4o-mini">GPT-4o Mini</option>
+                <option value="gpt-4o">GPT-4o</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              </select>
             </div>
           </section>
 
