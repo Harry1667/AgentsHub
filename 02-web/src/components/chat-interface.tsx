@@ -185,6 +185,7 @@ function MessageBubble({
   onBookmark,
   onRewriteRequest,
   onAcceptRewrite,
+  onCancelRewrite,
 }: {
   role: "user" | "assistant"
   content: string
@@ -199,6 +200,8 @@ function MessageBubble({
   onRewriteRequest?: (paragraph: string, instruction: string) => Promise<string>
   // 接受重寫：傳入重建後的整則 content
   onAcceptRewrite?: (newContent: string) => void
+  // 中止進行中的重寫
+  onCancelRewrite?: () => void
 }) {
   const isUser = role === "user"
   const [copied, setCopied] = useState(false)
@@ -216,6 +219,7 @@ function MessageBubble({
   const canRewrite = !isUser && !!onRewriteRequest && !!onAcceptRewrite
 
   const closeRewrite = () => {
+    if (rwLoading) onCancelRewrite?.()
     setRwIdx(null); setRwInstruction(""); setRwPreview(null); setRwError(null); setRwLoading(false)
   }
   const runRewrite = async () => {
@@ -225,6 +229,8 @@ function MessageBubble({
       const out = await onRewriteRequest(paragraphs[rwIdx], rwInstruction.trim())
       setRwPreview(out)
     } catch (e: unknown) {
+      // 使用者中止不算錯誤
+      if (e instanceof Error && e.name === "AbortError") return
       setRwError(e instanceof Error ? e.message : "重寫失敗")
     } finally {
       setRwLoading(false)
@@ -436,6 +442,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const rewriteAbortRef = useRef<AbortController | null>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -564,7 +571,13 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       prompt = `以下是目前的會議記錄：\n\n${transcript}\n\n請以「${respondAgent.name}」的身分接著發言。`
     } else {
       systemPrompt = conv?.systemPromptOverride ?? respondAgent.systemPrompt ?? ""
-      prompt = directUserPrompt ?? ""
+      // 帶多輪歷史：除第一輪外，送完整對話逐字稿給 proxy，讓 AI 有記憶
+      const hist = conv?.messages ?? []
+      if (hist.length > 1) {
+        prompt = `${buildTranscript(hist, agents)}\n\n（請延續以上對話，直接以助理身分回應最後一則使用者訊息，不要加說話者標籤。）`
+      } else {
+        prompt = directUserPrompt ?? ""
+      }
     }
 
     const body: Record<string, string | number> = {
@@ -650,10 +663,12 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     const effTemp = selectedTemp ?? rwAgent?.temperature
     if (typeof effTemp === "number") body.temperature = effTemp
 
+    rewriteAbortRef.current = new AbortController()
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: rewriteAbortRef.current.signal,
     })
     if (!res.ok) {
       const e = await res.json().catch(() => ({}))
@@ -940,6 +955,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                         ? (newContent) => updateMessageContent(conversationId, msg.id, newContent)
                         : undefined
                     }
+                    onCancelRewrite={() => rewriteAbortRef.current?.abort()}
                   />
                 )
               })}

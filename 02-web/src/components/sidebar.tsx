@@ -58,7 +58,13 @@ function SidebarButton({
   return btn
 }
 
-export function Sidebar() {
+export function Sidebar({
+  mobileOpen = false,
+  onNavigate,
+}: {
+  mobileOpen?: boolean
+  onNavigate?: () => void
+} = {}) {
   const router = useRouter()
   const pathname = usePathname()
   const {
@@ -69,6 +75,9 @@ export function Sidebar() {
   } = useAppStore()
 
   const [isAdmin, setIsAdmin] = useState(false)
+
+  // 導覽後在手機版關閉抽屜
+  const go = (href: string) => { router.push(href); onNavigate?.() }
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -86,8 +95,11 @@ export function Sidebar() {
   return (
     <div
       className={cn(
-        "flex flex-col h-full border-r bg-background transition-all duration-200",
-        sidebarOpen ? "w-64" : "w-14"
+        "flex flex-col h-full border-r bg-background transition-all duration-200 shrink-0",
+        sidebarOpen ? "w-64" : "w-14",
+        // 手機：固定抽屜，預設滑出畫面外；md 以上回到靜態
+        "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:w-64",
+        mobileOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full"
       )}
     >
       {/* Logo + Toggle */}
@@ -122,7 +134,7 @@ export function Sidebar() {
             label={item.label}
             active={item.active}
             collapsed={!sidebarOpen}
-            onClick={() => router.push(item.href)}
+            onClick={() => go(item.href)}
           />
         ))}
       </div>
@@ -143,7 +155,7 @@ export function Sidebar() {
           label="設定"
           active={pathname.startsWith("/settings")}
           collapsed={!sidebarOpen}
-          onClick={() => router.push("/settings")}
+          onClick={() => go("/settings")}
         />
         {isAdmin && (
           <SidebarButton
@@ -151,7 +163,7 @@ export function Sidebar() {
             label="用戶管理"
             active={pathname.startsWith("/admin")}
             collapsed={!sidebarOpen}
-            onClick={() => router.push("/admin")}
+            onClick={() => go("/admin")}
           />
         )}
       </div>
