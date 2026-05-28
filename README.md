@@ -141,3 +141,133 @@ sudo env PATH=$PATH PM2_HOME=/root/.pm2 pm2 restart agentshub-web --update-env
 - 程式註解使用**繁體中文**
 - 優先 `async/await`，錯誤處理明確、不 silent fail
 - ⚠️ 本專案使用較新的 Next.js，API 可能與訓練資料不同 —— 改動 Next 相關程式前，先讀 `02-web/node_modules/next/dist/docs/`
+
+---
+
+## English
+
+> A personal AI-assistant platform. Build and customize multiple AI agents, each with their own personality, and work with them in three modes: chat, multi-agent meetings, and a pixel-art office.
+
+Live at: **https://agentshub.looptw.com** (login required)
+
+### ✨ Features
+
+#### Agents
+- **Custom agents**: name, emoji avatar, bio, system prompt, model, temperature, max output, tags, pinning, desk color
+- **Three creation flows**
+  - 🪄 **AI builder**: describe what you want in plain language → the builder drafts the spec → create or refine
+  - 📋 **From template**: built-in library of preset assistants
+  - ✏️ **Manual**: the full form
+
+#### Chat
+- Markdown rendering (one-click copy on code blocks), streaming, multi-turn memory
+- **Paragraph rewrite** (select + instruct + before/after diff), message bookmarks, copy, export to `.md`
+- Switch **model / temperature** mid-conversation
+- **File upload**: text and PDF parsed as text; images go through vision
+
+#### Multi-agent meetings
+- Drop multiple agents into the same conversation, address them with `@name`, get a full transcript
+
+#### Pixel office 🏢
+- Walking pixel characters, live status (working / active / idle / new hire)
+- **Drag a character onto the meeting-room rug** to start a meeting
+- "Hiring" board on the wall → opens the AI builder
+- Random life: coffee breaks, music, desk-side small talk
+
+#### Account / system
+- Avatar-based login, invite-code registration, admin user management, session validation
+- Light / dark mode, mobile-responsive, first-time interactive onboarding
+
+### 🧱 Tech stack
+
+| Layer | Tech |
+|-------|------|
+| Framework | Next.js 16 (App Router, Turbopack), React 19, TypeScript |
+| Styling | Tailwind CSS v4, shadcn/ui (base-ui), lucide icons |
+| State | Zustand (with localStorage persistence) |
+| Database | MySQL via Drizzle ORM + `mysql2` |
+| Content | react-markdown + remark-gfm, pdfjs-dist (PDF extraction) |
+| AI | Unified multi-provider access (Gemini / OpenAI / Claude) via a proxy with auto-fallback |
+
+### 📁 Project structure
+
+```
+AgentsHub/
+├─ 01-dev/             Product and tech docs (PRD, UserFlow, TechStack, log)
+├─ 02-web/             Next.js app (main)
+│  ├─ src/app/         App Router pages + API routes (/api/*)
+│  ├─ src/components/  UI (chat-interface, office-view, agent-builder…)
+│  ├─ src/lib/         Zustand store, Drizzle schema, types, proxy helper
+│  └─ src/proxy.ts     middleware: auth
+├─ 03-Skills/          Private skills (gitignored)
+├─ CLAUDE.md           AI collaboration guide
+└─ SESSION_NOTES.md    Per-session dev notes
+```
+
+### 🚀 Local dev
+
+> The app lives in `02-web/` — run all commands from there.
+
+#### 1. Install
+```bash
+cd 02-web
+npm install
+```
+
+#### 2. Env vars
+```bash
+cp .env.example .env.local
+```
+
+#### 3. Connect the database
+Either SSH-tunnel into the production MySQL or run a local MySQL, then put the connection string into `DATABASE_URL`.
+
+Push tables on first run or after schema changes:
+```bash
+npx drizzle-kit push
+```
+
+#### 4. Run
+```bash
+npm run dev      # http://localhost:3000
+```
+
+Other commands:
+```bash
+npm run build    # production build
+npm run start    # serve production build
+npm run lint     # ESLint
+```
+
+### 🔑 Env vars
+
+In `02-web/.env.local` (**do not commit**):
+
+| Var | Purpose |
+|-----|---------|
+| `DATABASE_URL` | MySQL DSN `mysql://user:pass@host:3306/db` |
+| `SESSION_SECRET` | Session encryption key (`openssl rand -hex 32`). **Missing this breaks auth.** |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Admin credentials |
+| `REGISTER_CODE` | Invite code for registration (empty = registration disabled) |
+| `PROXY_TOKEN` | Proxy AI service token |
+| `PROXY_BASE_URL` | Proxy service endpoint URL |
+| `PROXY_PROJECT` | Proxy project code, default `agent-hub` |
+
+### 📦 Deploy (Oracle aaPanel + PM2 + Nginx)
+
+Production runs on an Oracle host; Nginx reverse-proxies to a PM2 process `agentshub-web` on port `3011`.
+
+```bash
+cd /www/wwwroot/agentshub.looptw.com
+sudo git pull origin main
+cd 02-web && npm install
+sudo rm -rf .next && npm run build       # .next often has root-owned leftovers, wipe first
+sudo env PATH=$PATH PM2_HOME=/root/.pm2 pm2 restart agentshub-web --update-env
+```
+> Node/PM2 lives at `/www/server/nvm/versions/node/v24.14.1/bin` (must be on PATH).
+
+### 📝 Conventions
+
+- Code comments in **Traditional Chinese**
+- Prefer `async/await`; explicit error handling, no silent failures
+- ⚠️ This project uses a newer Next.js whose API may differ from training data — read `02-web/node_modules/next/dist/docs/` before touching Next-related code
