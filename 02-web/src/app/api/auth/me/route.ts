@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getDb } from "@/lib/db"
 import { users } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
+import { TRIAL_USERNAME } from "@/lib/session"
+import { getTrialQuota } from "@/lib/trial"
 
 export async function GET(req: NextRequest) {
   const userId = req.headers.get("x-user-id")
@@ -11,5 +13,9 @@ export async function GET(req: NextRequest) {
   const db = getDb()
   const [user] = await db.select({ username: users.username }).from(users).where(eq(users.id, userId)).limit(1)
 
-  return NextResponse.json({ userId, role, username: user?.username ?? "" })
+  const username = user?.username ?? ""
+  const trial = username === TRIAL_USERNAME
+  const quota = trial ? getTrialQuota() : undefined
+
+  return NextResponse.json({ userId, role, username, trial, quota })
 }

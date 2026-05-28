@@ -480,6 +480,15 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [selectedModel, setSelectedModel] = useState<string>(() => useAppStore.getState().defaultModel)
   const [selectedTemp, setSelectedTemp] = useState<number | null>(null)
 
+  // 體驗帳號旗標（影響模型下拉是否顯示高階模型）
+  const [isTrial, setIsTrial] = useState(false)
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => setIsTrial(!!d.trial))
+      .catch(() => {})
+  }, [])
+
   // Rename title
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState("")
@@ -907,10 +916,15 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // 模型/溫度 控制的有效值與選項
   const effModelValue = selectedModel || primaryAgent?.model || "auto"
   const effTempValue = selectedTemp ?? primaryAgent?.temperature ?? 0.7
-  // 確保 agent 目前的 model 一定在選項中（mock agent 可能用清單外的型號）
-  const modelOptions = MODEL_OPTIONS.some((o) => o.value === effModelValue)
-    ? MODEL_OPTIONS
-    : [{ value: effModelValue, label: effModelValue }, ...MODEL_OPTIONS]
+  // 體驗帳號禁用高階模型，從清單中過濾
+  const TRIAL_BLOCKED = new Set(["claude-opus-4-7", "gpt-4o"])
+  const baseModelOptions = isTrial
+    ? MODEL_OPTIONS.filter((o) => !TRIAL_BLOCKED.has(o.value))
+    : MODEL_OPTIONS
+  // 確保 agent 目前的 model 一定在選項中（mock agent 可能用清單外的型號；體驗帳號若 agent 預設是禁用模型也補上以顯示）
+  const modelOptions = baseModelOptions.some((o) => o.value === effModelValue)
+    ? baseModelOptions
+    : [{ value: effModelValue, label: effModelValue }, ...baseModelOptions]
 
   // 模型選項標籤本土化：模型名稱保留英文，僅翻譯描述詞與「Agent 預設」後綴
   const localizeModelLabel = (value: string): string => {
@@ -928,6 +942,13 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   return (
     <div className="flex flex-col h-full">
+      {/* 體驗模式提示橫條 */}
+      {isTrial && (
+        <div className="px-4 py-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 text-xs flex items-center justify-center gap-2 border-b border-indigo-100 dark:border-indigo-900/50">
+          <span>🎁 {t("chat.trialBanner")}</span>
+          <a href="/login" className="underline hover:text-indigo-700 dark:hover:text-indigo-100">{t("chat.trialUpgrade")}</a>
+        </div>
+      )}
       {/* Header */}
       {agent && (
         <div className="flex items-center gap-3 px-6 py-4 border-b shrink-0">
