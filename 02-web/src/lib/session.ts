@@ -69,4 +69,18 @@ export async function verifyPassword(password: string, stored: string): Promise<
   return diff === 0
 }
 
+// ─── 體驗帳號（trial）─────────────────────────────
+// 共用體驗帳號：固定 username = "trial"，role 仍是 "user"，
+// 透過 username 判斷是否為體驗身分；在 chat API 套用配額 + 模型限制。
+export const TRIAL_USERNAME = "trial"
+// 體驗帳號限制
+export const TRIAL_HOURLY_TOKEN_LIMIT = 5000
+// 禁用的高階模型（其他都放行）
+export const TRIAL_BLOCKED_MODELS = new Set<string>([
+  "claude-opus-4-7",
+  "claude-opus-4-6",
+  "claude-opus-4-5",
+  "gpt-4o",
+])
+
 export { COOKIE_NAME, SESSION_DURATION_MS }

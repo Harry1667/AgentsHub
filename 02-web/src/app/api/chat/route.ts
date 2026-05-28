@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { isTrialUser, isModelBlockedForTrial, chargeTrialTokens, estimateTokens } from "@/lib/trial"
 
 // In-memory rate limiter: 100 requests per hour per IP
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
@@ -106,6 +107,29 @@ export async function POST(req: NextRequest) {
 
   if (!token) {
     return NextResponse.json({ error: "缺少 PROXY_TOKEN，請在 .env.local 設定" }, { status: 401 })
+  }
+
+  // ── 體驗帳號限制：模型白名單 + token 配額 ───────────
+  const userId = req.headers.get("x-user-id")
+  const trial = await isTrialUser(userId)
+  if (trial) {
+    if (isModelBlockedForTrial(model)) {
+      return NextResponse.json(
+        { error: "體驗帳號無法使用此模型，請選擇 Sonnet / Haiku / GPT-4o Mini / Gemini Flash。" },
+        { status: 403 },
+      )
+    }
+    const fullPromptForEstimate = (systemPrompt ? systemPrompt + "\n" : "") + (prompt ?? "")
+    const est = estimateTokens(fullPromptForEstimate)
+    const charge = chargeTrialTokens(est)
+    if (!charge.ok) {
+      return NextResponse.json(
+        {
+          error: `體驗帳號每小時 ${charge.limit} tokens 已用完（已用 ${charge.used}），請 ${Math.ceil(charge.retryAfterSec / 60)} 分鐘後再試，或註冊正式帳號。`,
+        },
+        { status: 429, headers: { "Retry-After": String(charge.retryAfterSec) } },
+      )
+    }
   }
 
   const resolvedProject = process.env.PROXY_PROJECT || project || "agent-hub"

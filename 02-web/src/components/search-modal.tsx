@@ -6,6 +6,7 @@ import { useAppStore } from "@/lib/store"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Search, MessageSquare } from "lucide-react"
+import { useI18n } from "@/lib/use-i18n"
 
 interface SearchResult {
   conversationId: string
@@ -18,6 +19,7 @@ interface SearchResult {
 
 export function SearchModal() {
   const router = useRouter()
+  const { t } = useI18n()
   const { conversations, agents, setActiveConversation } = useAppStore()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -88,7 +90,7 @@ export function SearchModal() {
         <div className="flex items-center gap-3 px-4 py-3 border-b">
           <Search className="w-4 h-4 text-muted-foreground shrink-0" />
           <Input
-            placeholder="搜尋對話或訊息..."
+            placeholder={t("search.placeholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="border-0 shadow-none focus-visible:ring-0 p-0 text-sm"
@@ -98,11 +100,11 @@ export function SearchModal() {
 
         <div className="max-h-80 overflow-y-auto">
           {results.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">找不到結果</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">{t("search.noResults")}</div>
           ) : (
             <div className="py-1">
               {!query.trim() && (
-                <div className="px-3 py-1.5 text-xs text-muted-foreground font-medium">最近對話</div>
+                <div className="px-3 py-1.5 text-xs text-muted-foreground font-medium">{t("search.recent")}</div>
               )}
               {results.map((r, i) => (
                 <button
@@ -126,9 +128,9 @@ export function SearchModal() {
         </div>
 
         <div className="border-t px-3 py-2 flex items-center gap-4 text-xs text-muted-foreground">
-          <span><kbd className="bg-muted px-1.5 py-0.5 rounded text-[10px]">↵</kbd> 開啟</span>
-          <span><kbd className="bg-muted px-1.5 py-0.5 rounded text-[10px]">Esc</kbd> 關閉</span>
-          <span className="ml-auto"><kbd className="bg-muted px-1.5 py-0.5 rounded text-[10px]">⌘K</kbd> 搜尋</span>
+          <span><kbd className="bg-muted px-1.5 py-0.5 rounded text-[10px]">↵</kbd> {t("search.open")}</span>
+          <span><kbd className="bg-muted px-1.5 py-0.5 rounded text-[10px]">Esc</kbd> {t("search.close")}</span>
+          <span className="ml-auto"><kbd className="bg-muted px-1.5 py-0.5 rounded text-[10px]">⌘K</kbd> {t("search.search")}</span>
         </div>
       </DialogContent>
     </Dialog>

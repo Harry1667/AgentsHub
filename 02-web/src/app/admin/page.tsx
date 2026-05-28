@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Shield, Trash2, Plus, Key, Users, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { usePageTitle } from "@/components/page-header"
+import { useI18n } from "@/lib/use-i18n"
 
 interface User {
   id: string
@@ -20,7 +21,8 @@ interface User {
 
 export default function AdminPage() {
   const router = useRouter()
-  usePageTitle("用戶管理")
+  const { t, intlLocale } = useI18n()
+  usePageTitle(t("admin.title"))
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
@@ -54,12 +56,12 @@ export default function AdminPage() {
       setForm({ username: "", password: "", role: "user" })
       load()
     } else {
-      setError(data.error ?? "建立失敗")
+      setError(data.error ?? t("admin.createFailed"))
     }
   }
 
   const deleteUser = async (user: User) => {
-    if (!confirm(`確定要刪除用戶「${user.username}」？此操作無法復原。`)) return
+    if (!confirm(t("admin.deleteConfirm", { name: user.username }))) return
     await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" })
     load()
   }
@@ -79,7 +81,7 @@ export default function AdminPage() {
       setShowReset(null)
       setNewPassword("")
     } else {
-      setError(data.error ?? "重設失敗")
+      setError(data.error ?? t("admin.resetFailed"))
     }
   }
 
@@ -101,31 +103,31 @@ export default function AdminPage() {
           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-4 transition-colors"
         >
           <ArrowLeft className="w-3 h-3" />
-          返回 AgentHub
+          {t("admin.backToHub")}
         </button>
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-amber-700 dark:text-amber-400" />
+          <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+            <Shield className="w-5 h-5 text-indigo-700 dark:text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">用戶管理</h1>
-            <p className="text-sm text-muted-foreground">管理 AgentHub 的所有用戶帳號</p>
+            <h1 className="text-2xl font-bold">{t("admin.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("admin.subtitle")}</p>
           </div>
           <Button
-            className="ml-auto bg-amber-700 hover:bg-amber-800 text-white gap-2"
+            className="ml-auto bg-indigo-700 hover:bg-indigo-800 text-white gap-2"
             onClick={() => { setShowCreate(true); setError("") }}
           >
-            <Plus className="w-4 h-4" />新增用戶
+            <Plus className="w-4 h-4" />{t("admin.addUser")}
           </Button>
         </div>
 
         {loading ? (
-          <p className="text-muted-foreground text-sm">載入中...</p>
+          <p className="text-muted-foreground text-sm">{t("common.loading")}</p>
         ) : (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
               <Users className="w-4 h-4" />
-              共 {users.length} 位用戶
+              {t("admin.userCount", { count: users.length })}
             </div>
             {users.map((user) => (
               <div
@@ -137,13 +139,13 @@ export default function AdminPage() {
                     <span className="font-medium text-sm">{user.username}</span>
                     <Badge
                       variant={user.role === "admin" ? "default" : "secondary"}
-                      className={user.role === "admin" ? "bg-amber-700 hover:bg-amber-800" : ""}
+                      className={user.role === "admin" ? "bg-indigo-700 hover:bg-indigo-800" : ""}
                     >
-                      {user.role === "admin" ? "管理員" : "一般用戶"}
+                      {user.role === "admin" ? t("admin.roleAdmin") : t("admin.roleUser")}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    建立於 {new Date(user.createdAt).toLocaleDateString("zh-TW")}
+                    {t("admin.createdOn", { date: new Date(user.createdAt).toLocaleDateString(intlLocale) })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -154,7 +156,7 @@ export default function AdminPage() {
                     onClick={() => toggleRole(user)}
                   >
                     <Shield className="w-3.5 h-3.5" />
-                    {user.role === "admin" ? "降為用戶" : "升為管理員"}
+                    {user.role === "admin" ? t("admin.demote") : t("admin.promote")}
                   </Button>
                   <Button
                     variant="ghost"
@@ -162,7 +164,7 @@ export default function AdminPage() {
                     className="text-xs gap-1"
                     onClick={() => { setShowReset(user); setNewPassword(""); setError("") }}
                   >
-                    <Key className="w-3.5 h-3.5" />重設密碼
+                    <Key className="w-3.5 h-3.5" />{t("admin.resetPassword")}
                   </Button>
                   <Button
                     variant="ghost"
@@ -170,7 +172,7 @@ export default function AdminPage() {
                     className="text-xs gap-1 text-destructive hover:text-destructive"
                     onClick={() => deleteUser(user)}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />刪除
+                    <Trash2 className="w-3.5 h-3.5" />{t("admin.delete")}
                   </Button>
                 </div>
               </div>
@@ -183,11 +185,11 @@ export default function AdminPage() {
       <Dialog open={showCreate} onOpenChange={(v) => { setShowCreate(v); setError("") }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>新增用戶</DialogTitle>
+            <DialogTitle>{t("admin.addUser")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div className="space-y-1.5">
-              <Label>帳號</Label>
+              <Label>{t("admin.username")}</Label>
               <Input
                 placeholder="username"
                 value={form.username}
@@ -195,7 +197,7 @@ export default function AdminPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>密碼（最少 6 字）</Label>
+              <Label>{t("admin.passwordMin")}</Label>
               <Input
                 type="password"
                 placeholder="••••••"
@@ -204,26 +206,26 @@ export default function AdminPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>帳戶類型</Label>
+              <Label>{t("admin.accountType")}</Label>
               <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as "admin" | "user" })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="user">一般用戶</SelectItem>
-                  <SelectItem value="admin">管理員</SelectItem>
+                  <SelectItem value="user">{t("admin.roleUser")}</SelectItem>
+                  <SelectItem value="admin">{t("admin.roleAdmin")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {error && <p className="text-sm text-red-500">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setShowCreate(false)}>取消</Button>
+              <Button variant="outline" onClick={() => setShowCreate(false)}>{t("common.cancel")}</Button>
               <Button
-                className="bg-amber-700 hover:bg-amber-800 text-white"
+                className="bg-indigo-700 hover:bg-indigo-800 text-white"
                 disabled={saving || !form.username || !form.password}
                 onClick={createUser}
               >
-                {saving ? "建立中..." : "建立"}
+                {saving ? t("admin.creating") : t("admin.create")}
               </Button>
             </div>
           </div>
@@ -234,11 +236,11 @@ export default function AdminPage() {
       <Dialog open={!!showReset} onOpenChange={(v) => { if (!v) setShowReset(null); setError("") }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>重設密碼 — {showReset?.username}</DialogTitle>
+            <DialogTitle>{t("admin.resetTitle", { name: showReset?.username ?? "" })}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div className="space-y-1.5">
-              <Label>新密碼（最少 6 字）</Label>
+              <Label>{t("admin.newPasswordMin")}</Label>
               <Input
                 type="password"
                 placeholder="••••••"
@@ -248,13 +250,13 @@ export default function AdminPage() {
             </div>
             {error && <p className="text-sm text-red-500">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setShowReset(null)}>取消</Button>
+              <Button variant="outline" onClick={() => setShowReset(null)}>{t("common.cancel")}</Button>
               <Button
-                className="bg-amber-700 hover:bg-amber-800 text-white"
+                className="bg-indigo-700 hover:bg-indigo-800 text-white"
                 disabled={saving || !newPassword}
                 onClick={resetPassword}
               >
-                {saving ? "儲存中..." : "確認重設"}
+                {saving ? t("common.saving") : t("admin.confirmReset")}
               </Button>
             </div>
           </div>

@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { usePageTitle } from "@/components/page-header"
+import { useI18n } from "@/lib/use-i18n"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
@@ -35,9 +36,6 @@ type Draft = {
   maxTokens: number
   tags: string[]
 }
-
-const OPENER =
-  "嗨！我是 Agent 建構師 🛠️ 想幫你打造一位專屬助手。\n\n先跟我說說：你希望這位助手主要幫你做什麼？（例如：寫小紅書文案、debug 程式、陪你練英文口說…）"
 
 async function* readSSE(res: Response) {
   const reader = res.body?.getReader()
@@ -65,7 +63,9 @@ export function AgentBuilder({ conversationId }: { conversationId?: string }) {
     conversations, saveAgent,
     addConversation, addMessage, updateLastMessage, renameConversation, setActiveConversation,
   } = useAppStore()
-  usePageTitle("AI 建構師")
+  const { t } = useI18n()
+  usePageTitle(t("agentBuilder.pageTitle"))
+  const OPENER = t("agentBuilder.opener")
 
   // 對話持久化：用哨兵 agentId 存成一般 conversation，但不進最近對話列表
   const [convId, setConvId] = useState<string | undefined>(conversationId)
@@ -74,7 +74,7 @@ export function AgentBuilder({ conversationId }: { conversationId?: string }) {
     () => (conv?.messages.length
       ? conv.messages
       : [{ id: "opener", role: "assistant" as const, content: OPENER, createdAt: "" }]),
-    [conv],
+    [conv, OPENER],
   )
 
   const [input, setInput] = useState("")
@@ -143,7 +143,7 @@ export function AgentBuilder({ conversationId }: { conversationId?: string }) {
         if (chunk.error) throw new Error(chunk.error)
         if (chunk.delta) { acc += chunk.delta; updateLastMessage(id, acc) }
       }
-      const finalContent = acc || "（無回應）"
+      const finalContent = acc || t("agentBuilder.noResponse")
       if (!acc) updateLastMessage(id, finalContent)
       // 持久化助理訊息
       fetch("/api/messages", {
@@ -169,10 +169,10 @@ export function AgentBuilder({ conversationId }: { conversationId?: string }) {
         body: JSON.stringify({ transcript: buildTranscript(messages) }),
       })
       const data = await res.json()
-      if (!res.ok || !data.ok) throw new Error(data.error || "生成失敗")
+      if (!res.ok || !data.ok) throw new Error(data.error || t("agentBuilder.generateFailed"))
       setDraft(data.agent as Draft)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "生成失敗")
+      setError(e instanceof Error ? e.message : t("agentBuilder.generateFailed"))
     } finally {
       setGenerating(false)
     }
@@ -209,16 +209,16 @@ export function AgentBuilder({ conversationId }: { conversationId?: string }) {
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-6 py-4 border-b shrink-0">
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => router.push("/agents")} title="返回我的 Agent">
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => router.push("/agents")} title={t("agentBuilder.backToAgents")}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
-        <span className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center text-base shrink-0">🛠️</span>
+        <span className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-base shrink-0">🛠️</span>
         <div className="flex-1 min-w-0">
-          <h2 className="font-semibold text-sm">Agent 建構師</h2>
-          <p className="text-xs text-muted-foreground truncate">聊清楚需求，一鍵建立專屬助手</p>
+          <h2 className="font-semibold text-sm">{t("agentBuilder.headerTitle")}</h2>
+          <p className="text-xs text-muted-foreground truncate">{t("agentBuilder.headerSubtitle")}</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => { setConvId(undefined); setDraft(null); setError(null); router.push("/agents/build") }}>
-          新討論
+          {t("agentBuilder.newDiscussion")}
         </Button>
       </div>
 
@@ -229,13 +229,13 @@ export function AgentBuilder({ conversationId }: { conversationId?: string }) {
             <div key={msg.id || i} className={cn("flex gap-3 py-2", msg.role === "user" && "flex-row-reverse")}>
               <div className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm mt-1",
-                msg.role === "user" ? "bg-amber-700 text-white" : "bg-amber-100 dark:bg-amber-900"
+                msg.role === "user" ? "bg-indigo-700 text-white" : "bg-indigo-100 dark:bg-indigo-900"
               )}>
                 {msg.role === "user" ? <User className="w-4 h-4" /> : <span>🛠️</span>}
               </div>
               <div className={cn(
                 "rounded-2xl px-4 py-3 text-sm leading-relaxed break-words max-w-[80%]",
-                msg.role === "user" ? "bg-amber-700 text-white rounded-tr-sm whitespace-pre-wrap" : "bg-muted rounded-tl-sm"
+                msg.role === "user" ? "bg-indigo-700 text-white rounded-tr-sm whitespace-pre-wrap" : "bg-muted rounded-tl-sm"
               )}>
                 {msg.role === "user" ? msg.content : (
                   <ReactMarkdown
@@ -256,28 +256,28 @@ export function AgentBuilder({ conversationId }: { conversationId?: string }) {
 
           {/* 草稿預覽卡 */}
           {draft && (
-            <div className="my-4 rounded-2xl border-2 border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30 p-4">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 mb-3">
-                <Sparkles className="w-3.5 h-3.5" /> 助手草稿
+            <div className="my-4 rounded-2xl border-2 border-indigo-300 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 p-4">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-indigo-700 dark:text-indigo-400 mb-3">
+                <Sparkles className="w-3.5 h-3.5" /> {t("agentBuilder.draftBadge")}
               </div>
               <div className="flex items-start gap-3 mb-3">
                 <span className="text-3xl shrink-0">{draft.avatar}</span>
                 <div className="min-w-0">
-                  <p className="font-semibold">{draft.name || "（未命名）"}</p>
+                  <p className="font-semibold">{draft.name || t("agentBuilder.unnamed")}</p>
                   <p className="text-xs text-muted-foreground">{draft.description}</p>
                 </div>
               </div>
               <div className="text-xs space-y-2">
                 <div>
-                  <span className="text-muted-foreground">System Prompt</span>
+                  <span className="text-muted-foreground">{t("agentBuilder.systemPrompt")}</span>
                   <p className="mt-1 rounded-lg bg-background/70 px-3 py-2 whitespace-pre-wrap max-h-40 overflow-y-auto leading-relaxed">
                     {draft.systemPrompt}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
-                  <span>模型：<span className="text-foreground">{draft.model}</span></span>
-                  <span>溫度：<span className="text-foreground">{draft.temperature.toFixed(1)}</span></span>
-                  <span>上限：<span className="text-foreground">{draft.maxTokens}</span></span>
+                  <span>{t("agentBuilder.model")}<span className="text-foreground">{draft.model}</span></span>
+                  <span>{t("agentBuilder.temperature")}<span className="text-foreground">{draft.temperature.toFixed(1)}</span></span>
+                  <span>{t("agentBuilder.maxTokens")}<span className="text-foreground">{draft.maxTokens}</span></span>
                 </div>
                 {draft.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1">
@@ -286,13 +286,13 @@ export function AgentBuilder({ conversationId }: { conversationId?: string }) {
                 )}
               </div>
               <div className="flex flex-wrap gap-2 mt-4">
-                <Button size="sm" className="bg-amber-700 hover:bg-amber-800 text-white gap-1.5" onClick={createAgent}>
-                  <Check className="w-3.5 h-3.5" /> 建立這個 Agent
+                <Button size="sm" className="bg-indigo-700 hover:bg-indigo-800 text-white gap-1.5" onClick={createAgent}>
+                  <Check className="w-3.5 h-3.5" /> {t("agentBuilder.createThis")}
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={editInForm}>
-                  <Pencil className="w-3.5 h-3.5" /> 進階編輯
+                  <Pencil className="w-3.5 h-3.5" /> {t("agentBuilder.advancedEdit")}
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>繼續討論調整</Button>
+                <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>{t("agentBuilder.keepDiscussing")}</Button>
               </div>
             </div>
           )}
@@ -313,21 +313,21 @@ export function AgentBuilder({ conversationId }: { conversationId?: string }) {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950"
+                className="gap-1.5 border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950"
                 onClick={generateDraft}
                 disabled={generating || streaming}
               >
                 {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
-                {generating ? "整理中…" : draft ? "重新整理草稿" : "整理成草稿"}
+                {generating ? t("agentBuilder.organizing") : draft ? t("agentBuilder.reorganize") : t("agentBuilder.organize")}
               </Button>
             </div>
           )}
-          <div className="flex items-end gap-2 rounded-2xl border bg-background shadow-sm px-4 py-3 focus-within:ring-2 focus-within:ring-amber-300">
+          <div className="flex items-end gap-2 rounded-2xl border bg-background shadow-sm px-4 py-3 focus-within:ring-2 focus-within:ring-indigo-300">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={streaming ? "建構師思考中…" : "回覆建構師…（Enter 送出，Shift+Enter 換行）"}
+              placeholder={streaming ? t("agentBuilder.thinking") : t("agentBuilder.replyPlaceholder")}
               className="flex-1 border-0 shadow-none resize-none focus-visible:ring-0 min-h-[24px] max-h-[160px] p-0 text-sm"
               rows={1}
               disabled={streaming}
@@ -335,7 +335,7 @@ export function AgentBuilder({ conversationId }: { conversationId?: string }) {
             <Button
               onClick={streaming ? () => abortRef.current?.abort() : send}
               size="icon"
-              className={cn("h-8 w-8 rounded-xl shrink-0", streaming ? "bg-red-500 hover:bg-red-600" : "bg-amber-700 hover:bg-amber-800 disabled:opacity-40")}
+              className={cn("h-8 w-8 rounded-xl shrink-0", streaming ? "bg-red-500 hover:bg-red-600" : "bg-indigo-700 hover:bg-indigo-800 disabled:opacity-40")}
               disabled={!streaming && !input.trim()}
             >
               {streaming ? <span className="w-3 h-3 rounded-sm bg-white" /> : <Send className="w-3.5 h-3.5 text-white" />}

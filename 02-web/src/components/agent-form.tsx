@@ -13,27 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Plus, X } from "lucide-react"
 import { usePageTitle } from "@/components/page-header"
-
-const MODELS = [
-  { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 (快速)" },
-  { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6 (均衡)" },
-  { value: "claude-opus-4-7", label: "Claude Opus 4.7 (最強)" },
-  { value: "gpt-4o-mini", label: "GPT-4o Mini" },
-  { value: "gpt-4o", label: "GPT-4o" },
-]
+import { useI18n } from "@/lib/use-i18n"
 
 const AVATAR_OPTIONS = ["🤖", "🧠", "✍️", "🌐", "📊", "💡", "⚡", "🌱", "💰", "🎯", "🔬", "🎨", "📚", "🏃", "🎵"]
-
-const COLOR_OPTIONS = [
-  { value: "amber",  bg: "bg-amber-400",  label: "暖沙" },
-  { value: "rose",   bg: "bg-rose-400",   label: "玫瑰" },
-  { value: "stone",  bg: "bg-stone-400",  label: "暖石" },
-  { value: "orange", bg: "bg-orange-400", label: "橘杏" },
-  { value: "yellow", bg: "bg-yellow-400", label: "陽光" },
-  { value: "lime",   bg: "bg-lime-400",   label: "薄荷" },
-  { value: "pink",   bg: "bg-pink-400",   label: "淡粉" },
-  { value: "purple", bg: "bg-purple-400", label: "薰衣草" },
-]
 
 interface AgentFormProps {
   existingAgent?: Agent
@@ -41,8 +23,29 @@ interface AgentFormProps {
 
 export function AgentForm({ existingAgent }: AgentFormProps) {
   const router = useRouter()
+  const { t } = useI18n()
   const { saveAgent } = useAppStore()
-  usePageTitle(existingAgent ? "編輯 Agent" : "建立 Agent")
+  usePageTitle(existingAgent ? t("agentForm.editTitle") : t("agentForm.createTitle"))
+
+  // 模型描述詞翻譯，模型名稱本身不翻
+  const MODELS = [
+    { value: "claude-haiku-4-5-20251001", label: `Claude Haiku 4.5 ${t("agentForm.modelFast")}` },
+    { value: "claude-sonnet-4-6", label: `Claude Sonnet 4.6 ${t("agentForm.modelBalanced")}` },
+    { value: "claude-opus-4-7", label: `Claude Opus 4.7 ${t("agentForm.modelBest")}` },
+    { value: "gpt-4o-mini", label: "GPT-4o Mini" },
+    { value: "gpt-4o", label: "GPT-4o" },
+  ]
+
+  const COLOR_OPTIONS = [
+    { value: "amber",  bg: "bg-amber-400",  label: t("agentForm.colorWarmSand") },
+    { value: "rose",   bg: "bg-rose-400",   label: t("agentForm.colorRose") },
+    { value: "stone",  bg: "bg-stone-400",  label: t("agentForm.colorWarmStone") },
+    { value: "orange", bg: "bg-orange-400", label: t("agentForm.colorOrange") },
+    { value: "yellow", bg: "bg-yellow-400", label: t("agentForm.colorSun") },
+    { value: "lime",   bg: "bg-lime-400",   label: t("agentForm.colorMint") },
+    { value: "pink",   bg: "bg-pink-400",   label: t("agentForm.colorPink") },
+    { value: "purple", bg: "bg-purple-400", label: t("agentForm.colorLavender") },
+  ]
 
   // 新建時讀取「Agent 建構師」暫存的草稿（client 端導航，無 SSR hydration 問題）
   const [form, setForm] = useState<Omit<Agent, "id" | "createdAt" | "useCount" | "isDefault">>(() => {
@@ -90,7 +93,7 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="border-b px-6 py-4 flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/agents")} title="返回我的 Agent">
+        <Button variant="ghost" size="icon" onClick={() => router.push("/agents")} title={t("agentForm.backToAgents")}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
@@ -98,16 +101,16 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
             onClick={() => router.push("/agents")}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            我的 Agent
+            {t("agentForm.myAgents")}
           </button>
-          <h1 className="font-bold text-lg">{existingAgent ? "編輯 Agent" : "建立 Agent"}</h1>
+          <h1 className="font-bold text-lg">{existingAgent ? t("agentForm.editTitle") : t("agentForm.createTitle")}</h1>
         </div>
         <Button
-          className="ml-auto bg-amber-700 hover:bg-amber-800 text-white"
+          className="ml-auto bg-indigo-700 hover:bg-indigo-800 text-white"
           onClick={handleSave}
           disabled={!form.name.trim()}
         >
-          儲存
+          {t("common.save")}
         </Button>
       </div>
 
@@ -115,14 +118,14 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
         <div className="max-w-2xl mx-auto space-y-6">
           {/* Avatar */}
           <div>
-            <Label className="mb-2 block">頭像</Label>
+            <Label className="mb-2 block">{t("agentForm.avatar")}</Label>
             <div className="flex flex-wrap gap-2">
               {AVATAR_OPTIONS.map((emoji) => (
                 <button
                   key={emoji}
                   onClick={() => setForm((f) => ({ ...f, avatar: emoji }))}
                   className={`w-10 h-10 text-xl rounded-lg border-2 transition-all hover:scale-110 ${
-                    form.avatar === emoji ? "border-amber-600 bg-amber-50 dark:bg-amber-950" : "border-transparent"
+                    form.avatar === emoji ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950" : "border-transparent"
                   }`}
                 >
                   {emoji}
@@ -133,38 +136,38 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
 
           {/* Workstation color */}
           <div>
-            <Label className="mb-2 block">工位顏色</Label>
+            <Label className="mb-2 block">{t("agentForm.color")}</Label>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setForm((f) => ({ ...f, color: undefined }))}
                 className={`w-8 h-8 rounded-full border-2 bg-gradient-to-br from-gray-300 to-gray-500 transition-all hover:scale-110 ${
-                  !form.color ? "border-amber-600 ring-2 ring-amber-300" : "border-transparent"
+                  !form.color ? "border-indigo-600 ring-2 ring-indigo-300" : "border-transparent"
                 }`}
-                title="自動（隨機）"
+                title={t("agentForm.colorAuto")}
               />
               {COLOR_OPTIONS.map((c) => (
                 <button
                   key={c.value}
                   onClick={() => setForm((f) => ({ ...f, color: c.value }))}
                   className={`w-8 h-8 rounded-full border-2 ${c.bg} transition-all hover:scale-110 ${
-                    form.color === c.value ? "border-amber-600 ring-2 ring-amber-300" : "border-transparent"
+                    form.color === c.value ? "border-indigo-600 ring-2 ring-indigo-300" : "border-transparent"
                   }`}
                   title={c.label}
                 />
               ))}
             </div>
-            <p className="text-xs text-muted-foreground mt-1.5">選擇工作區卡片的主題色，留空則自動分配</p>
+            <p className="text-xs text-muted-foreground mt-1.5">{t("agentForm.colorDesc")}</p>
           </div>
 
           {/* Pin toggle */}
           <div className="flex items-center justify-between rounded-lg border px-4 py-3">
             <div>
-              <p className="text-sm font-medium">釘選到工作區頂部</p>
-              <p className="text-xs text-muted-foreground">釘選後此 Agent 會固定顯示在最前面</p>
+              <p className="text-sm font-medium">{t("agentForm.pinTitle")}</p>
+              <p className="text-xs text-muted-foreground">{t("agentForm.pinDesc")}</p>
             </div>
             <button
               onClick={() => setForm((f) => ({ ...f, pinned: !f.pinned }))}
-              className={`relative w-10 h-6 rounded-full transition-colors ${form.pinned ? "bg-amber-700" : "bg-muted"}`}
+              className={`relative w-10 h-6 rounded-full transition-colors ${form.pinned ? "bg-indigo-700" : "bg-muted"}`}
             >
               <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.pinned ? "translate-x-5" : "translate-x-1"}`} />
             </button>
@@ -172,9 +175,9 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
 
           {/* Name */}
           <div>
-            <Label className="mb-2 block">名稱 *</Label>
+            <Label className="mb-2 block">{t("agentForm.nameLabel")}</Label>
             <Input
-              placeholder="例如：程式助手、翻譯官..."
+              placeholder={t("agentForm.namePlaceholder")}
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             />
@@ -182,9 +185,9 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
 
           {/* Description */}
           <div>
-            <Label className="mb-2 block">簡介</Label>
+            <Label className="mb-2 block">{t("agentForm.descLabel")}</Label>
             <Input
-              placeholder="一句話描述這個 Agent 的功能"
+              placeholder={t("agentForm.descPlaceholder")}
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             />
@@ -192,9 +195,9 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
 
           {/* System Prompt */}
           <div>
-            <Label className="mb-2 block">System Prompt</Label>
+            <Label className="mb-2 block">{t("agentForm.systemPromptLabel")}</Label>
             <Textarea
-              placeholder="告訴 AI 它的角色、行為方式和限制..."
+              placeholder={t("agentForm.systemPromptPlaceholder")}
               value={form.systemPrompt}
               onChange={(e) => setForm((f) => ({ ...f, systemPrompt: e.target.value }))}
               rows={8}
@@ -204,7 +207,7 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
 
           {/* Model */}
           <div>
-            <Label className="mb-2 block">模型</Label>
+            <Label className="mb-2 block">{t("agentForm.modelLabel")}</Label>
             <Select value={form.model} onValueChange={(v) => v && setForm((f) => ({ ...f, model: v }))}>
               <SelectTrigger>
                 <SelectValue />
@@ -222,7 +225,7 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
           {/* Temperature */}
           <div>
             <div className="flex justify-between mb-2">
-              <Label>溫度 (Temperature)</Label>
+              <Label>{t("agentForm.tempLabel")}</Label>
               <span className="text-sm text-muted-foreground">{form.temperature.toFixed(1)}</span>
             </div>
             <Slider
@@ -233,14 +236,14 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
               onValueChange={(v) => setForm((f) => ({ ...f, temperature: typeof v === "number" ? v : f.temperature }))}
             />
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
-              <span>精確</span>
-              <span>創意</span>
+              <span>{t("agentForm.tempPrecise")}</span>
+              <span>{t("agentForm.tempCreative")}</span>
             </div>
           </div>
 
           {/* Max Tokens */}
           <div>
-            <Label className="mb-2 block">最大輸出 Tokens</Label>
+            <Label className="mb-2 block">{t("agentForm.maxTokensLabel")}</Label>
             <Input
               type="number"
               min={256}
@@ -252,10 +255,10 @@ export function AgentForm({ existingAgent }: AgentFormProps) {
 
           {/* Tags */}
           <div>
-            <Label className="mb-2 block">標籤</Label>
+            <Label className="mb-2 block">{t("agentForm.tagsLabel")}</Label>
             <div className="flex gap-2 mb-2">
               <Input
-                placeholder="新增標籤..."
+                placeholder={t("agentForm.addTagPlaceholder")}
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addTag()}

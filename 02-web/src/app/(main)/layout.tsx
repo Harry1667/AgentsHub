@@ -5,9 +5,11 @@ import { Menu } from "lucide-react"
 import { Sidebar } from "@/components/sidebar"
 import { DbLoader } from "@/components/db-loader"
 import { SearchModal } from "@/components/search-modal"
+import { useI18n } from "@/lib/use-i18n"
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { t } = useI18n()
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -29,7 +31,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           <button
             onClick={() => setMobileOpen(true)}
             className="p-1.5 rounded-md hover:bg-muted transition-colors"
-            aria-label="開啟選單"
+            aria-label={t("pageHeader.openMenu")}
           >
             <Menu className="w-5 h-5" />
           </button>

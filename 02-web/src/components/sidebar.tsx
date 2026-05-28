@@ -21,6 +21,7 @@ import {
   Wand2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useI18n } from "@/lib/use-i18n"
 
 function SidebarButton({
   icon: Icon,
@@ -71,6 +72,7 @@ export function Sidebar({
 } = {}) {
   const router = useRouter()
   const pathname = usePathname()
+  const { t } = useI18n()
   const {
     sidebarOpen,
     theme,
@@ -96,8 +98,8 @@ export function Sidebar({
   const go = (href: string) => { router.push(href); onNavigate?.() }
 
   const navItems = [
-    { icon: MessageSquare, label: "對話工作區", href: "/chat", active: pathname === "/chat" },
-    { icon: Bot, label: "我的 Agent", href: "/agents", active: pathname.startsWith("/agents") },
+    { icon: MessageSquare, label: t("sidebar.chat"), href: "/chat", active: pathname === "/chat" },
+    { icon: Bot, label: t("sidebar.agents"), href: "/agents", active: pathname.startsWith("/agents") },
   ]
 
   // 跨 agent 最近對話（含會議），依更新時間排序；排除建構師討論（另外列）
@@ -142,7 +144,7 @@ export function Sidebar({
       {/* Logo + Toggle */}
       <div className={cn("flex items-center border-b px-2 py-3", sidebarOpen ? "justify-between" : "justify-center")}>
         <div className={cn("flex items-center gap-2 px-1", !sidebarOpen && "px-0")}>
-          <div className="w-7 h-7 rounded-lg bg-amber-700 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-indigo-700 flex items-center justify-center">
             <Bot className="w-4 h-4 text-white" />
           </div>
           {sidebarOpen && <span className="font-semibold text-sm">AgentHub</span>}
@@ -175,18 +177,18 @@ export function Sidebar({
           <button
             data-tour="new-chat"
             onClick={handleNewChat}
-            className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm bg-amber-700 text-white hover:bg-amber-800 transition-colors"
+            className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm bg-indigo-700 text-white hover:bg-indigo-800 transition-colors"
           >
-            <Plus className="w-4 h-4 shrink-0" /> 新對話
+            <Plus className="w-4 h-4 shrink-0" /> {t("sidebar.newChat")}
           </button>
         ) : (
           <Tooltip>
             <TooltipTrigger render={<span className="block w-full" />}>
-              <button onClick={handleNewChat} className="w-full flex justify-center rounded-lg py-2 bg-amber-700 text-white hover:bg-amber-800">
+              <button onClick={handleNewChat} className="w-full flex justify-center rounded-lg py-2 bg-indigo-700 text-white hover:bg-indigo-800">
                 <Plus className="w-4 h-4" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right">新對話</TooltipContent>
+            <TooltipContent side="right">{t("sidebar.newChat")}</TooltipContent>
           </Tooltip>
         )}
       </div>
@@ -194,9 +196,9 @@ export function Sidebar({
       {/* 最近對話（展開時顯示） */}
       {sidebarOpen ? (
         <div className="flex-1 overflow-y-auto px-2 min-h-0">
-          <p data-tour="recent" className="text-[11px] font-medium text-muted-foreground px-2 py-1.5 sticky top-0 bg-background">最近對話</p>
+          <p data-tour="recent" className="text-[11px] font-medium text-muted-foreground px-2 py-1.5 sticky top-0 bg-background">{t("sidebar.recent")}</p>
           {recent.length === 0 ? (
-            <p className="text-xs text-muted-foreground px-2 py-2">還沒有對話</p>
+            <p className="text-xs text-muted-foreground px-2 py-2">{t("sidebar.noConversations")}</p>
           ) : (
             <div className="space-y-0.5 pb-2">
               {recent.map((c) => (
@@ -213,7 +215,7 @@ export function Sidebar({
                   <button
                     onClick={(e) => { e.stopPropagation(); deleteConversation(c.id) }}
                     className="opacity-0 group-hover/conv:opacity-100 transition-opacity p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 shrink-0"
-                    title="刪除對話"
+                    title={t("sidebar.deleteChat")}
                   >
                     <Trash2 className="w-3 h-3 text-muted-foreground" />
                   </button>
@@ -226,7 +228,7 @@ export function Sidebar({
           {builderConvs.length > 0 && (
             <>
               <p className="text-[11px] font-medium text-muted-foreground px-2 py-1.5 mt-2 flex items-center gap-1">
-                <Wand2 className="w-3 h-3" />建構紀錄
+                <Wand2 className="w-3 h-3" />{t("sidebar.buildLog")}
               </p>
               <div className="space-y-0.5 pb-2">
                 {builderConvs.map((c) => (
@@ -243,7 +245,7 @@ export function Sidebar({
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteConversation(c.id) }}
                       className="opacity-0 group-hover/conv:opacity-100 transition-opacity p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 shrink-0"
-                      title="刪除"
+                      title={t("common.delete")}
                     >
                       <Trash2 className="w-3 h-3 text-muted-foreground" />
                     </button>
@@ -261,13 +263,13 @@ export function Sidebar({
       <div className="border-t px-2 py-2 space-y-0.5 mt-auto">
         <SidebarButton
           icon={theme === "light" ? Moon : Sun}
-          label={theme === "light" ? "深色模式" : "淺色模式"}
+          label={theme === "light" ? t("sidebar.darkMode") : t("sidebar.lightMode")}
           collapsed={!sidebarOpen}
           onClick={toggleTheme}
         />
         <SidebarButton
           icon={Settings}
-          label="設定"
+          label={t("sidebar.settings")}
           active={pathname.startsWith("/settings")}
           collapsed={!sidebarOpen}
           onClick={() => go("/settings")}
@@ -275,7 +277,7 @@ export function Sidebar({
         {isAdmin && (
           <SidebarButton
             icon={Shield}
-            label="用戶管理"
+            label={t("sidebar.userAdmin")}
             active={pathname.startsWith("/admin")}
             collapsed={!sidebarOpen}
             onClick={() => go("/admin")}
@@ -288,10 +290,10 @@ export function Sidebar({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Plus className="w-4 h-4" />開啟新對話
+              <Plus className="w-4 h-4" />{t("sidebar.newChatTitle")}
             </DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-muted-foreground -mt-2">選一位 Agent 開始新的對話。</p>
+          <p className="text-xs text-muted-foreground -mt-2">{t("sidebar.pickAgent")}</p>
           <ScrollArea className="max-h-80">
             <div className="space-y-1 pr-2">
               {agents.map((a) => (

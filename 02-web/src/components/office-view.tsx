@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Agent, Conversation } from "@/lib/types"
+import { useI18n } from "@/lib/use-i18n"
 
 /**
  * 像素辦公室視圖。
@@ -114,6 +115,17 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
   const [stagedIds, setStagedIds] = useState<string[]>([])
   const cbRef = useRef({ onOpenAgent, onOpenMeeting, onStartMeeting, onRecruit })
   useEffect(() => { cbRef.current = { onOpenAgent, onOpenMeeting, onStartMeeting, onRecruit } })
+
+  const { t } = useI18n()
+  // canvas 繪製在動畫迴圈內，t 用 ref 持有避免閉包過期（切語言即時反映）
+  const labelsRef = useRef({ meetingRoom: "", recruit: "", recruitHint: "" })
+  useEffect(() => {
+    labelsRef.current = {
+      meetingRoom: `🏛 ${t("workspace.meetingRoom")}`,
+      recruit: `＋ ${t("workspace.recruit")}`,
+      recruitHint: t("office.recruitCanvasHint"),
+    }
+  })
 
   // 每個 agent 最後活躍時間
   const lastActive = (() => {
@@ -233,7 +245,7 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
       ctx.lineWidth = 1
       ctx.strokeRect(mz.x + 0.5, mz.y + 0.5, mz.w - 1, mz.h - 1)
       ctx.fillStyle = "rgba(79,70,229,0.9)"; ctx.font = "7px sans-serif"; ctx.textAlign = "center"
-      ctx.fillText("🏛 會議室", mz.x + mz.w / 2, mz.y + 10)
+      ctx.fillText(labelsRef.current.meetingRoom, mz.x + mz.w / 2, mz.y + 10)
 
       // 牆上「徵人」公告板
       const rz = RECRUIT_ZONE
@@ -242,9 +254,9 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
       ctx.strokeStyle = "rgba(120,53,15,0.95)"; ctx.lineWidth = 1
       ctx.strokeRect(rz.x + 0.5, rz.y + 0.5, rz.w - 1, rz.h - 1)
       ctx.fillStyle = "#fff"; ctx.font = "bold 7px sans-serif"; ctx.textAlign = "center"
-      ctx.fillText("＋ 徵新同事", rz.x + rz.w / 2, rz.y + 10)
+      ctx.fillText(labelsRef.current.recruit, rz.x + rz.w / 2, rz.y + 10)
       ctx.font = "6px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.85)"
-      ctx.fillText("點我用 AI 建構", rz.x + rz.w / 2, rz.y + 19)
+      ctx.fillText(labelsRef.current.recruitHint, rz.x + rz.w / 2, rz.y + 19)
 
       type Drawable = { baseY: number; draw: () => void }
       const items: Drawable[] = []
@@ -386,27 +398,27 @@ export function OfficeView({ agents, conversations, onOpenAgent, onOpenMeeting, 
       {stagedIds.length >= 1 && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-background/95 border rounded-full shadow-lg px-3 py-1.5">
           <span className="text-xs text-muted-foreground">
-            會議室：{stagedIds.length} 位
+            {t("office.staging", { count: stagedIds.length })}
           </span>
           <button
             onClick={() => { if (stagedIds.length >= 2) { onStartMeeting(stagedIds); setStaged([]) } }}
             disabled={stagedIds.length < 2}
-            className="text-xs px-2.5 py-1 rounded-full bg-amber-700 text-white disabled:opacity-40 hover:bg-amber-800 transition-colors"
+            className="text-xs px-2.5 py-1 rounded-full bg-indigo-700 text-white disabled:opacity-40 hover:bg-indigo-800 transition-colors"
           >
-            發起會議{stagedIds.length >= 2 ? `（${stagedIds.length}）` : "（至少 2 位）"}
+            {t("office.startMeeting")}{stagedIds.length >= 2 ? `（${stagedIds.length}）` : t("office.atLeastTwo")}
           </button>
-          <button onClick={() => setStaged([])} className="text-xs text-muted-foreground hover:text-foreground">清空</button>
+          <button onClick={() => setStaged([])} className="text-xs text-muted-foreground hover:text-foreground">{t("office.clear")}</button>
         </div>
       )}
 
       {/* 圖例 */}
       <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-[11px] text-muted-foreground">
-        <span>🟢 工作中(近1h)</span>
-        <span>🟡 活躍(7天內)</span>
-        <span>😴 閒置(7天沒碰會變淡)</span>
-        <span>✨ 新同事(清醒待命)</span>
-        <span>・拖小人進會議室地毯可組會議</span>
-        <span>・點牆上「徵人」板新增 Agent</span>
+        <span>{t("office.legendWorking")}</span>
+        <span>{t("office.legendActive")}</span>
+        <span>{t("office.legendIdle")}</span>
+        <span>{t("office.legendFresh")}</span>
+        <span>{t("office.legendDragHint")}</span>
+        <span>{t("office.legendRecruitHint")}</span>
       </div>
     </div>
   )

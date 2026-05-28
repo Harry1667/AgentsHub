@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server"
 import { getDb } from "@/lib/db"
 import { users } from "@/lib/db/schema"
+import { ne } from "drizzle-orm"
+import { TRIAL_USERNAME } from "@/lib/session"
 
-// 公開端點：供登入頁顯示頭像牆（不含任何敏感資料）
+// 公開端點：供登入頁顯示頭像牆（不含任何敏感資料）；體驗帳號不出現在頭像牆。
 export async function GET() {
   try {
     const db = getDb()
@@ -14,6 +16,7 @@ export async function GET() {
         avatar: users.avatar,
       })
       .from(users)
+      .where(ne(users.username, TRIAL_USERNAME))
 
     return NextResponse.json(
       rows.map((r) => ({

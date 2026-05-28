@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { Agent, Conversation, Message } from "./types"
+import { Locale, DEFAULT_LOCALE } from "./i18n"
 
 interface AppState {
   agents: Agent[]
@@ -8,6 +9,7 @@ interface AppState {
   activeConversationId: string | null
   activeAgentId: string | null
   theme: "light" | "dark"
+  locale: Locale
   sidebarOpen: boolean
   isLoaded: boolean
   defaultModel: string  // 對話預設模型（""=跟隨 Agent；可在對話中臨時覆寫）
@@ -36,6 +38,7 @@ interface AppState {
   togglePinAgent: (id: string) => void
   toggleBookmarkMessage: (conversationId: string, messageId: string) => void
   toggleTheme: () => void
+  setLocale: (locale: Locale) => void
   toggleSidebar: () => void
 }
 
@@ -53,6 +56,7 @@ export const useAppStore = create<AppState>()(
       activeConversationId: null,
       activeAgentId: null,
       theme: "dark",
+      locale: DEFAULT_LOCALE,
       sidebarOpen: true,
       isLoaded: false,
       defaultModel: "",
@@ -309,6 +313,8 @@ export const useAppStore = create<AppState>()(
       toggleTheme: () =>
         set((state) => ({ theme: state.theme === "light" ? "dark" : "light" })),
 
+      setLocale: (locale) => set({ locale }),
+
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
 
       setDefaultModel: (model) => set({ defaultModel: model }),
@@ -317,7 +323,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "agent-store",
-      partialize: (s) => ({ theme: s.theme, defaultModel: s.defaultModel, workspaceView: s.workspaceView, onboarded: s.onboarded }),
+      partialize: (s) => ({ theme: s.theme, locale: s.locale, defaultModel: s.defaultModel, workspaceView: s.workspaceView, onboarded: s.onboarded }),
     }
   )
 )

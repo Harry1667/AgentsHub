@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { usePageTitle } from "@/components/page-header"
 import { extractFileText, readImage, fileKind } from "@/lib/extract-file"
+import { useI18n } from "@/lib/use-i18n"
 
 type Attachment =
   | { name: string; kind: "text"; text: string }
@@ -94,7 +95,7 @@ async function* readSSEStream(response: Response): AsyncGenerator<{
 function TypingIndicator({ avatar }: { avatar?: string }) {
   return (
     <div className="flex gap-3 py-4">
-      <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center shrink-0 text-base">
+      <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center shrink-0 text-base">
         {avatar || "🤖"}
       </div>
       <div className="flex items-center gap-1 bg-muted rounded-2xl rounded-tl-sm px-4 py-3">
@@ -113,6 +114,7 @@ function parseProviderSuffix(content: string) {
 }
 
 function CodeBlock({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n()
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
@@ -131,7 +133,7 @@ function CodeBlock({ children }: { children: React.ReactNode }) {
       <button
         onClick={handleCopy}
         className="absolute top-1.5 right-1.5 p-1 rounded opacity-0 group-hover/code:opacity-100 transition-opacity bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20"
-        title="複製程式碼"
+        title={t("chat.copyCode")}
       >
         {copied
           ? <Check className="w-3 h-3 text-green-500" />
@@ -225,6 +227,7 @@ function MessageBubble({
   // 中止進行中的重寫
   onCancelRewrite?: () => void
 }) {
+  const { t, intlLocale } = useI18n()
   const isUser = role === "user"
   const [copied, setCopied] = useState(false)
 
@@ -261,7 +264,7 @@ function MessageBubble({
     } catch (e: unknown) {
       // 使用者中止不算錯誤
       if (e instanceof Error && e.name === "AbortError") return
-      setRwError(e instanceof Error ? e.message : "重寫失敗")
+      setRwError(e instanceof Error ? e.message : t("chat.rewriteFailed"))
     } finally {
       setRwLoading(false)
     }
@@ -274,8 +277,8 @@ function MessageBubble({
     closeRewrite()
   }
 
-  const time = new Date(createdAt).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })
-  const fullTime = new Date(createdAt).toLocaleString("zh-TW")
+  const time = new Date(createdAt).toLocaleTimeString(intlLocale, { hour: "2-digit", minute: "2-digit" })
+  const fullTime = new Date(createdAt).toLocaleString(intlLocale)
 
   const handleCopy = () => {
     const { text } = parseProviderSuffix(content)
@@ -289,12 +292,12 @@ function MessageBubble({
     <div className={cn("flex gap-3 py-2 group/msg", isUser && "flex-row-reverse")}>
       <div className={cn(
         "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm mt-1",
-        isUser ? "bg-amber-700 text-white" : "bg-amber-100 dark:bg-amber-900"
+        isUser ? "bg-indigo-700 text-white" : "bg-indigo-100 dark:bg-indigo-900"
       )}>
         {isUser ? <User className="w-4 h-4" /> : <span>{avatar || "🤖"}</span>}
       </div>
 
-      <div className={cn("flex flex-col gap-1 max-w-[70%]", isUser && "items-end")}>
+      <div className={cn("flex flex-col gap-1", isUser ? "max-w-[80%] items-end" : "max-w-[88%]")}>
         {/* 會議模式：發言者名稱 */}
         {!isUser && speakerName && (
           <span className="text-[11px] font-medium text-muted-foreground px-1">{speakerName}</span>
@@ -303,7 +306,7 @@ function MessageBubble({
         <div className={cn(
           "relative rounded-2xl px-4 py-3 text-sm leading-relaxed break-words",
           isUser
-            ? "bg-amber-700 text-white rounded-tr-sm whitespace-pre-wrap"
+            ? "bg-indigo-700 text-white rounded-tr-sm whitespace-pre-wrap"
             : "bg-muted rounded-tl-sm"
         )}>
           {isUser ? (
@@ -333,21 +336,21 @@ function MessageBubble({
                     <button
                       onClick={() => { setRwIdx(i); setRwInstruction(""); setRwPreview(null); setRwError(null) }}
                       className="absolute -left-6 top-0.5 p-1 rounded opacity-0 group-hover/para:opacity-100 transition-opacity hover:bg-black/10 dark:hover:bg-white/10"
-                      title="重寫這段"
+                      title={t("chat.rewriteParagraph")}
                     >
                       <Wand2 className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
                   )}
                   {canRewrite && rwIdx === i && (
-                    <div className="my-2 rounded-xl border border-amber-300 dark:border-amber-800 bg-background/80 p-2.5 space-y-2">
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-                        <Wand2 className="w-3.5 h-3.5" /> 重寫這段
+                    <div className="my-2 rounded-xl border border-indigo-300 dark:border-indigo-800 bg-background/80 p-2.5 space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-indigo-700 dark:text-indigo-400">
+                        <Wand2 className="w-3.5 h-3.5" /> {t("chat.rewriteParagraph")}
                       </div>
                       <Input
                         value={rwInstruction}
                         onChange={(e) => setRwInstruction(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter" && !rwLoading && !(e.nativeEvent as { isComposing?: boolean }).isComposing) runRewrite() }}
-                        placeholder="選填指示：更簡潔 / 更正式 / 翻成英文…"
+                        placeholder={t("chat.rewriteInstruction")}
                         className="h-8 text-xs"
                         disabled={rwLoading}
                       />
@@ -355,19 +358,19 @@ function MessageBubble({
                       {rwPreview !== null ? (
                         <div className="space-y-1.5">
                           <div className="text-[11px] text-muted-foreground line-through opacity-70">{para}</div>
-                          <div className="text-xs rounded-lg bg-amber-50 dark:bg-amber-950 px-2 py-1.5">{rwPreview}</div>
+                          <div className="text-xs rounded-lg bg-indigo-50 dark:bg-indigo-950 px-2 py-1.5">{rwPreview}</div>
                           <div className="flex gap-1.5">
-                            <Button size="sm" className="h-7 text-xs bg-amber-700 hover:bg-amber-800 text-white" onClick={acceptRewrite}>接受</Button>
-                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={runRewrite} disabled={rwLoading}>重試</Button>
-                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={closeRewrite}>取消</Button>
+                            <Button size="sm" className="h-7 text-xs bg-indigo-700 hover:bg-indigo-800 text-white" onClick={acceptRewrite}>{t("chat.accept")}</Button>
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={runRewrite} disabled={rwLoading}>{t("common.retry")}</Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={closeRewrite}>{t("common.cancel")}</Button>
                           </div>
                         </div>
                       ) : (
                         <div className="flex gap-1.5">
-                          <Button size="sm" className="h-7 text-xs bg-amber-700 hover:bg-amber-800 text-white" onClick={runRewrite} disabled={rwLoading}>
-                            {rwLoading ? "重寫中…" : "重寫"}
+                          <Button size="sm" className="h-7 text-xs bg-indigo-700 hover:bg-indigo-800 text-white" onClick={runRewrite} disabled={rwLoading}>
+                            {rwLoading ? t("chat.rewriting") : t("chat.rewrite")}
                           </Button>
-                          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={closeRewrite}>取消</Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={closeRewrite}>{t("common.cancel")}</Button>
                         </div>
                       )}
                     </div>
@@ -385,7 +388,7 @@ function MessageBubble({
             <button
               onClick={handleCopy}
               className="absolute top-2 right-2 p-1 rounded opacity-0 group-hover/msg:opacity-100 transition-opacity hover:bg-black/10 dark:hover:bg-white/10"
-              title="複製訊息"
+              title={t("chat.copyMessage")}
             >
               {copied
                 ? <Check className="w-3.5 h-3.5 text-green-500" />
@@ -404,10 +407,10 @@ function MessageBubble({
             <button
               onClick={onBookmark}
               className="transition-colors"
-              title={bookmarked ? "取消書籤" : "加入書籤"}
+              title={bookmarked ? t("chat.removeBookmark") : t("chat.addBookmark")}
             >
               {bookmarked
-                ? <BookmarkCheck className="w-3 h-3 text-amber-700" />
+                ? <BookmarkCheck className="w-3 h-3 text-indigo-700" />
                 : <Bookmark className="w-3 h-3 text-muted-foreground hover:text-foreground" />}
             </button>
           )}
@@ -417,7 +420,7 @@ function MessageBubble({
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <RefreshCw className="w-3 h-3" />
-              重新生成
+              {t("chat.regenerate")}
             </button>
           )}
         </div>
@@ -460,6 +463,7 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const router = useRouter()
+  const { t, intlLocale } = useI18n()
   const {
     conversations, agents, addMessage, updateLastMessage, updateMessageContent, setMessageMeta, removeLastAssistantMessage,
     addConversation, setActiveConversation,
@@ -515,7 +519,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // 頁面命名：對話標題 →（無則）agent 名稱
   usePageTitle(
     conversation?.title
-    || (isMeeting ? "會議" : agent ? `與 ${agent.name} 對話` : "對話")
+    || (isMeeting ? t("chat.meeting") : agent ? agent.name : t("sidebar.chat"))
   )
 
   useEffect(() => {
@@ -556,19 +560,19 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     const lines = [
       `# ${conversation.title}`,
       ``,
-      `> **與會者:** ${participants.map((p) => `${p.avatar} ${p.name}`).join("、")}`,
-      `> **匯出時間:** ${new Date().toLocaleString("zh-TW")}`,
+      `> **${t("chat.participantsLabel")}:** ${participants.map((p) => `${p.avatar} ${p.name}`).join("、")}`,
+      `> **${t("chat.exportedAt")}:** ${new Date().toLocaleString(intlLocale)}`,
       ``,
       `---`,
       ``,
     ]
     for (const msg of conversation.messages) {
       const speaker = msg.role === "user"
-        ? "你"
+        ? t("chat.you")
         : (agents.find((a) => a.id === msg.agentId)?.name ?? "AI")
-      const t = new Date(msg.createdAt).toLocaleString("zh-TW")
+      const ts = new Date(msg.createdAt).toLocaleString(intlLocale)
       const { text } = parseProviderSuffix(msg.content)
-      lines.push(`## ${speaker}`, `*${t}*`, ``, text, ``, `---`, ``)
+      lines.push(`## ${speaker}`, `*${ts}*`, ``, text, ``, `---`, ``)
     }
     const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" })
     const url = URL.createObjectURL(blob)
@@ -685,7 +689,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       }
     }
 
-    const finalContent = accumulated || "（無回應）"
+    const finalContent = accumulated || t("chat.noResponse")
     if (!accumulated) updateLastMessage(convId, finalContent)
     // provider/model 存成 metadata，不再混進 content
     setMessageMeta(convId, assistantMsg.id, { actualProvider, actualModel })
@@ -906,7 +910,21 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // 確保 agent 目前的 model 一定在選項中（mock agent 可能用清單外的型號）
   const modelOptions = MODEL_OPTIONS.some((o) => o.value === effModelValue)
     ? MODEL_OPTIONS
-    : [{ value: effModelValue, label: `${effModelValue}（Agent 預設）` }, ...MODEL_OPTIONS]
+    : [{ value: effModelValue, label: effModelValue }, ...MODEL_OPTIONS]
+
+  // 模型選項標籤本土化：模型名稱保留英文，僅翻譯描述詞與「Agent 預設」後綴
+  const localizeModelLabel = (value: string): string => {
+    switch (value) {
+      case "auto": return t("chat.modelAuto")
+      case "claude-haiku-4-5-20251001": return `Claude Haiku 4.5 ${t("agentForm.modelFast")}`
+      case "claude-sonnet-4-6": return `Claude Sonnet 4.6 ${t("agentForm.modelBalanced")}`
+      case "claude-opus-4-7": return `Claude Opus 4.7 ${t("agentForm.modelBest")}`
+      case "gpt-4o-mini": return "GPT-4o Mini"
+      case "gpt-4o": return "GPT-4o"
+      case "gemini-2.5-flash": return "Gemini 2.5 Flash"
+      default: return `${value}${t("chat.agentDefault")}`
+    }
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -919,7 +937,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
             size="icon"
             className="h-8 w-8 shrink-0"
             onClick={() => router.push("/chat")}
-            title="返回對話工作區"
+            title={t("chat.back")}
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
@@ -927,12 +945,12 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
           <button
             onClick={() => !isEmpty && conversation && setShowParticipants(true)}
             className="flex -space-x-2 shrink-0 items-center"
-            title={isMeeting ? "管理與會者" : undefined}
+            title={isMeeting ? t("chat.manageParticipants") : undefined}
           >
             {participants.slice(0, 4).map((p) => (
               <span
                 key={p.id}
-                className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900 ring-2 ring-background flex items-center justify-center text-base"
+                className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 ring-2 ring-background flex items-center justify-center text-base"
               >
                 {p.avatar}
               </span>
@@ -951,7 +969,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
               </h2>
               {isMeeting && (
                 <Badge variant="secondary" className="gap-1 shrink-0 text-[10px] px-1.5 py-0">
-                  <Users className="w-2.5 h-2.5" />會議
+                  <Users className="w-2.5 h-2.5" />{t("chat.meeting")}
                 </Badge>
               )}
             </div>
@@ -965,7 +983,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   if (e.key === "Enter") handleRenameCommit()
                   if (e.key === "Escape") setEditingTitle(false)
                 }}
-                className="h-5 text-xs border-0 border-b border-amber-300 rounded-none shadow-none focus-visible:ring-0 p-0 mt-0.5"
+                className="h-5 text-xs border-0 border-b border-indigo-300 rounded-none shadow-none focus-visible:ring-0 p-0 mt-0.5"
               />
             ) : (
               <button
@@ -976,7 +994,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     setEditingTitle(true)
                   }
                 }}
-                title={!isEmpty ? "點擊重新命名" : undefined}
+                title={!isEmpty ? t("chat.rename") : undefined}
               >
                 <p className="text-xs text-muted-foreground truncate">
                   {isEmpty ? agent.description : conversation?.title}
@@ -990,19 +1008,19 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
           <div className="flex items-center gap-1">
             {!isEmpty && (
               <>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowParticipants(true)} title="管理與會者">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowParticipants(true)} title={t("chat.manageParticipants")}>
                   <Users className="w-3.5 h-3.5" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleOpenSystemPrompt} title="編輯 System Prompt">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleOpenSystemPrompt} title={t("chat.editSystemPrompt")}>
                   <Settings className="w-3.5 h-3.5" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport} title="匯出對話">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport} title={t("chat.exportChat")}>
                   <Download className="w-3.5 h-3.5" />
                 </Button>
               </>
             )}
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handleNewChat}>
-              <Plus className="w-3.5 h-3.5" />新對話
+              <Plus className="w-3.5 h-3.5" />{t("chat.newChat")}
             </Button>
           </div>
         </div>
@@ -1015,7 +1033,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
               <div className="text-center">
                 <div className="text-5xl mb-4">{agent?.avatar || "🤖"}</div>
-                <h1 className="text-2xl font-bold mb-2">你好！我是 {agent?.name}</h1>
+                <h1 className="text-2xl font-bold mb-2">{t("chat.greeting", { name: agent?.name ?? "AI" })}</h1>
                 <p className="text-muted-foreground max-w-md text-sm">{agent?.description}</p>
               </div>
               {agent && (
@@ -1024,9 +1042,9 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 </div>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg w-full">
-                {["幫我分析這段程式碼", "解釋這個概念", "幫我優化文案", "翻譯成英文"].map((p) => (
-                  <button key={p} onClick={() => setInput(p)} className="text-left px-4 py-3 rounded-xl border hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950 text-sm text-muted-foreground transition-colors">
-                    <Sparkles className="w-3.5 h-3.5 inline mr-1.5 text-amber-500" />{p}
+                {[t("chat.suggestAnalyze"), t("chat.suggestExplain"), t("chat.suggestPolish"), t("chat.suggestTranslate")].map((p) => (
+                  <button key={p} onClick={() => setInput(p)} className="text-left px-4 py-3 rounded-xl border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-sm text-muted-foreground transition-colors">
+                    <Sparkles className="w-3.5 h-3.5 inline mr-1.5 text-indigo-500" />{p}
                   </button>
                 ))}
               </div>
@@ -1080,13 +1098,13 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       </div>
 
       {/* Input */}
-      <div className="px-4 pb-4 shrink-0">
+      <div className="px-4 pb-5 shrink-0">
         <div className="max-w-3xl mx-auto">
           {/* 會議模式提示 + 快速 @點名 chips */}
           {isMeeting && (
             <div className="flex items-center gap-1.5 mb-2 flex-wrap">
               <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                <AtSign className="w-3 h-3" />點名發言：
+                <AtSign className="w-3 h-3" />{t("chat.mentionHint")}
               </span>
               {participants.map((p) => (
                 <button
@@ -1096,7 +1114,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     setInput(next)
                     textareaRef.current?.focus()
                   }}
-                  className="px-2 py-0.5 rounded-full text-[11px] bg-muted hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors"
+                  className="px-2 py-0.5 rounded-full text-[11px] bg-muted hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors"
                 >
                   {p.avatar} {p.name}
                 </button>
@@ -1104,7 +1122,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
             </div>
           )}
 
-          <div className="relative flex flex-col gap-2 rounded-2xl border bg-background shadow-sm px-4 py-3 focus-within:ring-2 focus-within:ring-amber-300">
+          <div className="relative flex flex-col gap-2.5 rounded-3xl border bg-card shadow-sm px-4 py-3.5 transition-shadow focus-within:ring-2 focus-within:ring-indigo-400/60 focus-within:shadow-md">
             {/* @mention 自動完成 */}
             {mentionCandidates.length > 0 && (
               <div className="absolute bottom-full left-2 mb-2 w-56 bg-popover border rounded-xl shadow-lg overflow-hidden z-10">
@@ -1129,12 +1147,12 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                       ? <img src={`data:${a.mime};base64,${a.data}`} alt="" className="w-5 h-5 rounded object-cover" />
                       : <FileText className="w-3 h-3 text-muted-foreground ml-1" />}
                     <span className="max-w-[140px] truncate">{a.name}</span>
-                    <button onClick={() => setAttachments((p) => p.filter((_, j) => j !== i))} className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10" title="移除">
+                    <button onClick={() => setAttachments((p) => p.filter((_, j) => j !== i))} className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10" title={t("chat.remove")}>
                       <X className="w-3 h-3" />
                     </button>
                   </span>
                 ))}
-                {attaching && <span className="text-xs text-muted-foreground">解析檔案中…</span>}
+                {attaching && <span className="text-xs text-muted-foreground">{t("chat.parsingFile")}</span>}
               </div>
             )}
             <input
@@ -1148,10 +1166,10 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
             <div className="flex items-end gap-2">
               <Button
                 variant="ghost" size="icon"
-                className="h-8 w-8 rounded-xl shrink-0 text-muted-foreground"
+                className="h-9 w-9 rounded-xl shrink-0 text-muted-foreground"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isStreaming || attaching}
-                title="上傳檔案（文字檔 / PDF）"
+                title={t("chat.uploadFile")}
               >
                 <Paperclip className="w-4 h-4" />
               </Button>
@@ -1160,8 +1178,8 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 value={input}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={isStreaming ? "AI 回應中..." : isMeeting ? "輸入訊息，用 @ 點名與會者…" : "輸入訊息… (Enter 送出，Shift+Enter 換行)"}
-                className="flex-1 border-0 shadow-none resize-none focus-visible:ring-0 min-h-[24px] max-h-[200px] p-0 text-sm"
+                placeholder={isStreaming ? t("chat.aiResponding") : isMeeting ? t("chat.placeholderMeeting") : t("chat.placeholder")}
+                className="flex-1 border-0 shadow-none resize-none focus-visible:ring-0 min-h-[40px] max-h-[200px] py-2 px-0 text-sm leading-relaxed self-center"
                 rows={1}
                 disabled={isStreaming}
               />
@@ -1169,39 +1187,39 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 onClick={isStreaming ? () => abortRef.current?.abort() : () => handleSend()}
                 size="icon"
                 className={cn(
-                  "h-8 w-8 rounded-xl shrink-0",
-                  isStreaming ? "bg-red-500 hover:bg-red-600" : "bg-amber-700 hover:bg-amber-800 disabled:opacity-40"
+                  "h-9 w-9 rounded-xl shrink-0",
+                  isStreaming ? "bg-red-500 hover:bg-red-600" : "bg-indigo-700 hover:bg-indigo-800 disabled:opacity-40"
                 )}
                 disabled={!isStreaming && !input.trim() && attachments.length === 0}
               >
                 {isStreaming
                   ? <span className="w-3 h-3 rounded-sm bg-white" />
-                  : <Send className="w-3.5 h-3.5 text-white" />}
+                  : <Send className="w-4 h-4 text-white" />}
               </Button>
             </div>
             {/* 模型 + 溫度 控制 */}
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap border-t border-border/60 pt-2.5">
               <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-muted-foreground">模型</span>
+                <span className="text-[11px] text-muted-foreground">{t("chat.model")}</span>
                 <select
                   value={effModelValue}
                   onChange={(e) => setSelectedModel(e.target.value)}
                   className="text-xs bg-muted rounded-full px-2.5 py-1 outline-none cursor-pointer hover:bg-muted/80 max-w-[180px]"
-                  title="此選擇只套用於接下來發送的訊息"
+                  title={t("chat.modelApplyHint")}
                 >
                   {modelOptions.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <option key={o.value} value={o.value}>{localizeModelLabel(o.value)}</option>
                   ))}
                 </select>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-muted-foreground whitespace-nowrap">溫度 {effTempValue.toFixed(1)}</span>
+                <span className="text-[11px] text-muted-foreground whitespace-nowrap">{t("chat.temperature")} {effTempValue.toFixed(1)}</span>
                 <input
                   type="range" min={0} max={2} step={0.1}
                   value={effTempValue}
                   onChange={(e) => setSelectedTemp(parseFloat(e.target.value))}
-                  className="w-20 accent-amber-700 cursor-pointer"
-                  title="此溫度只套用於接下來發送的訊息"
+                  className="w-20 accent-indigo-700 cursor-pointer"
+                  title={t("chat.tempApplyHint")}
                 />
               </div>
             </div>
@@ -1214,16 +1232,16 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Users className="w-4 h-4" />會議與會者
+              <Users className="w-4 h-4" />{t("chat.participantsTitle")}
             </DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground -mt-2">
-            加入多個 Agent 組成會議，發言時用 <span className="font-mono">@名稱</span> 點名回覆。
+            {t("chat.participantsDesc")}
           </p>
 
           {/* 目前與會者 */}
           <div className="space-y-1.5">
-            <Label className="text-xs">目前與會者（{participants.length}）</Label>
+            <Label className="text-xs">{t("chat.currentParticipants", { count: participants.length })}</Label>
             <div className="flex flex-wrap gap-1.5">
               {participants.map((p) => (
                 <span key={p.id} className="flex items-center gap-1 pl-2 pr-1 py-1 rounded-full bg-muted text-xs">
@@ -1232,7 +1250,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     <button
                       onClick={() => removeParticipant(conversationId, p.id)}
                       className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10"
-                      title="移除"
+                      title={t("chat.remove")}
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1244,9 +1262,9 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
           {/* 可加入的 Agent */}
           <div className="space-y-1.5">
-            <Label className="text-xs">加入 Agent</Label>
+            <Label className="text-xs">{t("chat.addAgent")}</Label>
             {availableToAdd.length === 0 ? (
-              <p className="text-xs text-muted-foreground">沒有其他可加入的 Agent。</p>
+              <p className="text-xs text-muted-foreground">{t("chat.noMoreAgents")}</p>
             ) : (
               <div className="grid grid-cols-1 gap-1 max-h-60 overflow-y-auto">
                 {availableToAdd.map((a) => (
@@ -1268,8 +1286,8 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
           </div>
 
           <div className="flex justify-end pt-1">
-            <Button onClick={() => setShowParticipants(false)} className="bg-amber-700 hover:bg-amber-800 text-white">
-              完成
+            <Button onClick={() => setShowParticipants(false)} className="bg-indigo-700 hover:bg-indigo-800 text-white">
+              {t("common.done")}
             </Button>
           </div>
         </DialogContent>
@@ -1279,10 +1297,10 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       <Dialog open={showSystemPrompt} onOpenChange={setShowSystemPrompt}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>快速編輯 System Prompt</DialogTitle>
+            <DialogTitle>{t("chat.systemPromptTitle")}</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground -mt-2">
-            此修改僅套用於本次對話（單一 Agent 模式），不影響 Agent 的全域設定。
+            {t("chat.systemPromptDesc")}
           </p>
           <div className="space-y-2">
             <Label>System Prompt</Label>
@@ -1291,13 +1309,13 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
               onChange={(e) => setEditedSystemPrompt(e.target.value)}
               rows={12}
               className="font-mono text-xs resize-none"
-              placeholder="在此輸入給 AI 的指令..."
+              placeholder={t("chat.systemPromptPlaceholder")}
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setShowSystemPrompt(false)}>取消</Button>
-            <Button onClick={handleSaveSystemPrompt} className="bg-amber-700 hover:bg-amber-800 text-white">
-              套用
+            <Button variant="outline" onClick={() => setShowSystemPrompt(false)}>{t("common.cancel")}</Button>
+            <Button onClick={handleSaveSystemPrompt} className="bg-indigo-700 hover:bg-indigo-800 text-white">
+              {t("common.apply")}
             </Button>
           </div>
         </DialogContent>

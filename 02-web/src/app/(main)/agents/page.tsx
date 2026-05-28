@@ -11,9 +11,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Plus, Edit2, Trash2, MessageSquare, LayoutTemplate, Wand2 } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
+import { useI18n } from "@/lib/use-i18n"
 
 export default function AgentsPage() {
   const router = useRouter()
+  const { t } = useI18n()
   const { agents, deleteAgent, addConversation, setActiveConversation, saveAgent } = useAppStore()
   const [showTemplates, setShowTemplates] = useState(false)
 
@@ -29,24 +31,24 @@ export default function AgentsPage() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <PageHeader
-        title="我的 Agent"
-        subtitle="管理你的 AI 助手，自訂個性與能力"
+        title={t("agents.title")}
+        subtitle={t("agents.subtitle")}
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" className="gap-2" onClick={() => setShowTemplates(true)}>
               <LayoutTemplate className="w-4 h-4" />
-              從範本新增
+              {t("agents.fromTemplate")}
             </Button>
             <Button variant="outline" className="gap-2" onClick={() => router.push("/agents/new")}>
               <Plus className="w-4 h-4" />
-              手動建立
+              {t("agents.manualCreate")}
             </Button>
             <Button
-              className="gap-2 bg-amber-700 hover:bg-amber-800 text-white"
+              className="gap-2 bg-indigo-700 hover:bg-indigo-800 text-white"
               onClick={() => router.push("/agents/build")}
             >
               <Wand2 className="w-4 h-4" />
-              AI 建構師
+              {t("agents.aiBuilder")}
             </Button>
           </div>
         }
@@ -74,11 +76,11 @@ export default function AgentsPage() {
               <CardFooter className="gap-2 pt-2">
                 <Button
                   size="sm"
-                  className="flex-1 bg-amber-700 hover:bg-amber-800 text-white"
+                  className="flex-1 bg-indigo-700 hover:bg-indigo-800 text-white"
                   onClick={() => handleChat(agent.id)}
                 >
                   <MessageSquare className="w-3.5 h-3.5 mr-1" />
-                  對話
+                  {t("agents.chat")}
                 </Button>
                 <Button
                   size="sm"
@@ -102,10 +104,10 @@ export default function AgentsPage() {
           {/* Add card */}
           <button
             onClick={() => router.push("/agents/new")}
-            className="min-h-[200px] rounded-xl border-2 border-dashed border-muted-foreground/25 hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-amber-700 transition-all"
+            className="min-h-[200px] rounded-xl border-2 border-dashed border-muted-foreground/25 hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-indigo-700 transition-all"
           >
             <Plus className="w-8 h-8" />
-            <span className="text-sm">建立新 Agent</span>
+            <span className="text-sm">{t("agents.createNew")}</span>
           </button>
         </div>
       </div>
@@ -115,12 +117,12 @@ export default function AgentsPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <LayoutTemplate className="w-4 h-4" />從範本新增 Agent
+              <LayoutTemplate className="w-4 h-4" />{t("agents.templateDialogTitle")}
             </DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-muted-foreground -mt-2">挑一個預設範本，一鍵加入你的 Agent。</p>
+          <p className="text-xs text-muted-foreground -mt-2">{t("agents.templateDialogDesc")}</p>
           {templates.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">所有範本都已加入 🎉</p>
+            <p className="text-sm text-muted-foreground text-center py-6">{t("agents.allTemplatesAdded")}</p>
           ) : (
             <ScrollArea className="max-h-80">
               <div className="space-y-1 pr-2">

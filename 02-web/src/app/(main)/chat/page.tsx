@@ -17,14 +17,7 @@ import { Agent, Conversation } from "@/lib/types"
 import { PageHeader } from "@/components/page-header"
 import { OfficeView } from "@/components/office-view"
 import { OnboardingTour, type TourStep } from "@/components/onboarding-tour"
-
-const TOUR_STEPS: TourStep[] = [
-  { selector: "[data-tour=new-chat]", title: "隨時開新對話", body: "點這裡用最近的 Agent 立刻開一段新對話。" },
-  { selector: "[data-tour=recent]", title: "所有對話都在這", body: "跨 Agent 的最近對話列表，一鍵跳回任何一段，包含會議。" },
-  { selector: "[data-tour=view-toggle]", title: "兩種檢視", body: "卡片或像素辦公室。點任一個 Agent 就直接進入最近的對話。" },
-  { selector: "[data-tour=meeting]", title: "多人會議", body: "進會議室找多個 Agent 一起討論，發言時用 @ 點名。" },
-  { title: "準備好了！", body: "對話中還能上傳檔案、切換模型、重寫段落。開始玩玩看吧 🎉" },
-]
+import { useI18n } from "@/lib/use-i18n"
 
 // 多 agent 會議判定
 function isMeetingConv(c: Conversation): boolean {
@@ -88,6 +81,7 @@ function AgentCard({
   onClick: () => void
   onTogglePin: (e: React.MouseEvent | React.KeyboardEvent) => void
 }) {
+  const { t } = useI18n()
   const theme = agent.color
     ? (DESK_THEMES_MAP[agent.color] ?? DESK_THEMES[index % DESK_THEMES.length])
     : DESK_THEMES[index % DESK_THEMES.length]
@@ -100,7 +94,7 @@ function AgentCard({
     >
       {/* Pinned indicator */}
       {agent.pinned && (
-        <span className="absolute top-2 left-2 z-20 text-amber-400 drop-shadow text-sm" title="已釘選">📌</span>
+        <span className="absolute top-2 left-2 z-20 text-indigo-400 drop-shadow text-sm" title={t("workspace.pinned")}>📌</span>
       )}
 
       {/* Backdrop / wall area */}
@@ -123,7 +117,7 @@ function AgentCard({
             "bg-black/10 dark:bg-white/10 hover:bg-black/25 dark:hover:bg-white/25",
             agent.pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           )}
-          title={agent.pinned ? "取消釘選" : "釘選到頂部"}
+          title={agent.pinned ? t("workspace.unpin") : t("workspace.pinTop")}
         >
           <span className="text-sm leading-none">{agent.pinned ? "📌" : "📍"}</span>
         </div>
@@ -144,7 +138,7 @@ function AgentCard({
 
         <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/10 flex items-center gap-1.5">
           <span className="text-[10px]">{decor[0]}</span>
-          <span className="text-[10px] text-muted-foreground">點擊開始對話</span>
+          <span className="text-[10px] text-muted-foreground">{t("workspace.startChat")}</span>
         </div>
       </div>
     </button>
@@ -153,6 +147,7 @@ function AgentCard({
 
 // 會議室卡片 — 工位區的「大家一起開會的地方」
 function MeetingRoomCard({ count, onClick }: { count: number; onClick: () => void }) {
+  const { t } = useI18n()
   return (
     <button
       data-tour="meeting"
@@ -169,15 +164,15 @@ function MeetingRoomCard({ count, onClick }: { count: number; onClick: () => voi
       <div className="h-1.5 bg-indigo-300 dark:bg-indigo-800" />
       <div className="px-4 py-3 bg-indigo-50 dark:bg-indigo-950">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold text-sm leading-snug truncate">會議室</h3>
+          <h3 className="font-semibold text-sm leading-snug truncate">{t("workspace.meetingRoom")}</h3>
           <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5 bg-black/5 dark:bg-white/10 rounded-full px-2 py-0.5">
             {count}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">多個 Agent 一起開會討論</p>
+        <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{t("workspace.meetingRoomDesc")}</p>
         <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/10 flex items-center gap-1.5">
           <Users className="w-3 h-3 text-muted-foreground" />
-          <span className="text-[10px] text-muted-foreground">點擊發起會議</span>
+          <span className="text-[10px] text-muted-foreground">{t("workspace.startMeeting")}</span>
         </div>
       </div>
     </button>
@@ -186,23 +181,24 @@ function MeetingRoomCard({ count, onClick }: { count: number; onClick: () => voi
 
 // 招募卡 — 工位區的「徵新同事」入口，點擊進 AI 建構師
 function RecruitCard({ onClick }: { onClick: () => void }) {
+  const { t } = useI18n()
   return (
     <button
       onClick={onClick}
-      className="group text-left rounded-2xl overflow-hidden border-2 border-dashed border-amber-300/70 hover:border-amber-400 hover:shadow-xl transition-all duration-200 hover:-translate-y-1 cursor-pointer w-full relative"
+      className="group text-left rounded-2xl overflow-hidden border-2 border-dashed border-indigo-300/70 hover:border-indigo-400 hover:shadow-xl transition-all duration-200 hover:-translate-y-1 cursor-pointer w-full relative"
     >
-      <div className="relative h-28 flex items-center justify-center overflow-hidden bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900">
+      <div className="relative h-28 flex items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950 dark:to-indigo-900">
         <span className="absolute top-2 left-3 text-lg opacity-30 rotate-[-12deg] select-none">🪄</span>
         <span className="absolute bottom-3 right-3 text-base opacity-25 rotate-[8deg] select-none">✨</span>
         <span className="text-4xl group-hover:scale-110 transition-transform duration-200 select-none drop-shadow-sm z-10">🛠️</span>
       </div>
-      <div className="h-1.5 bg-amber-300 dark:bg-amber-800" />
-      <div className="px-4 py-3 bg-amber-50/60 dark:bg-amber-950/40">
-        <h3 className="font-semibold text-sm leading-snug truncate">徵新同事</h3>
-        <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">跟 AI 建構師聊聊，打造專屬助手</p>
+      <div className="h-1.5 bg-indigo-300 dark:bg-indigo-800" />
+      <div className="px-4 py-3 bg-indigo-50/60 dark:bg-indigo-950/40">
+        <h3 className="font-semibold text-sm leading-snug truncate">{t("workspace.recruit")}</h3>
+        <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{t("workspace.recruitDesc")}</p>
         <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/10 flex items-center gap-1.5">
           <span className="text-[10px]">🪄</span>
-          <span className="text-[10px] text-muted-foreground">點擊開始建構</span>
+          <span className="text-[10px] text-muted-foreground">{t("workspace.startBuild")}</span>
         </div>
       </div>
     </button>
@@ -211,7 +207,16 @@ function RecruitCard({ onClick }: { onClick: () => void }) {
 
 export default function ChatPage() {
   const router = useRouter()
+  const { t, intlLocale } = useI18n()
   const { agents, conversations, addConversation, setActiveConversation, isLoaded, togglePinAgent, workspaceView, setWorkspaceView, onboarded, setOnboarded } = useAppStore()
+
+  const TOUR_STEPS: TourStep[] = [
+    { selector: "[data-tour=new-chat]", title: t("onboarding.step1Title"), body: t("onboarding.step1Body") },
+    { selector: "[data-tour=recent]", title: t("onboarding.step2Title"), body: t("onboarding.step2Body") },
+    { selector: "[data-tour=view-toggle]", title: t("onboarding.step3Title"), body: t("onboarding.step3Body") },
+    { selector: "[data-tour=meeting]", title: t("onboarding.step4Title"), body: t("onboarding.step4Body") },
+    { title: t("onboarding.step5Title"), body: t("onboarding.step5Body") },
+  ]
 
   // 會議室
   const [meetingOpen, setMeetingOpen] = useState(false)
@@ -271,7 +276,7 @@ export default function ChatPage() {
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-        載入中...
+        {t("common.loading")}
       </div>
     )
   }
@@ -280,8 +285,8 @@ export default function ChatPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-6">
         <div className="text-5xl">🤖</div>
-        <h2 className="text-lg font-semibold">還沒有 Agent</h2>
-        <p className="text-sm text-muted-foreground max-w-xs">前往「我的 Agent」頁面建立你的第一個 AI 助手</p>
+        <h2 className="text-lg font-semibold">{t("workspace.noAgents")}</h2>
+        <p className="text-sm text-muted-foreground max-w-xs">{t("workspace.noAgentsDesc")}</p>
       </div>
     )
   }
@@ -289,25 +294,25 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="對話工作區"
-        subtitle="選擇一個 Agent 開始對話，或進入會議室發起多人討論"
+        title={t("sidebar.chat")}
+        subtitle={t("workspace.subtitle")}
         actions={
           <div data-tour="view-toggle" className="flex items-center rounded-lg border p-0.5">
             <button
               onClick={() => setWorkspaceView("grid")}
               className={cn("flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs transition-colors",
-                workspaceView === "grid" ? "bg-amber-700 text-white" : "text-muted-foreground hover:bg-muted")}
-              title="卡片檢視"
+                workspaceView === "grid" ? "bg-indigo-700 text-white" : "text-muted-foreground hover:bg-muted")}
+              title={t("workspace.cardView")}
             >
-              <LayoutGrid className="w-3.5 h-3.5" /> 卡片
+              <LayoutGrid className="w-3.5 h-3.5" /> {t("workspace.card")}
             </button>
             <button
               onClick={() => setWorkspaceView("office")}
               className={cn("flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs transition-colors",
-                workspaceView === "office" ? "bg-amber-700 text-white" : "text-muted-foreground hover:bg-muted")}
-              title="辦公室檢視"
+                workspaceView === "office" ? "bg-indigo-700 text-white" : "text-muted-foreground hover:bg-muted")}
+              title={t("workspace.officeView")}
             >
-              <Building2 className="w-3.5 h-3.5" /> 辦公室
+              <Building2 className="w-3.5 h-3.5" /> {t("workspace.office")}
             </button>
           </div>
         }
@@ -329,7 +334,7 @@ export default function ChatPage() {
               }}
               onRecruit={() => router.push("/agents/build")}
             />
-            <p className="text-center text-xs text-muted-foreground mt-3">點小人開始對話 ・ 點地毯發起會議</p>
+            <p className="text-center text-xs text-muted-foreground mt-3">{t("workspace.officeHint")}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -357,13 +362,13 @@ export default function ChatPage() {
       <Dialog open={meetingOpen} onOpenChange={(o) => { setMeetingOpen(o); if (!o) { setPicking(false); setPickedIds([]) } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">🏛️ 會議室</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">🏛️ {t("workspace.meetingRoom")}</DialogTitle>
           </DialogHeader>
 
           {picking ? (
             /* 發起新會議：選擇與會者 */
             <div className="flex flex-col gap-3">
-              <p className="text-xs text-muted-foreground">選擇至少 2 個 Agent 組成會議。</p>
+              <p className="text-xs text-muted-foreground">{t("workspace.pickMeetingAgents")}</p>
               <ScrollArea className="max-h-72">
                 <div className="space-y-1 pr-2">
                   {agents.map((a) => {
@@ -374,7 +379,7 @@ export default function ChatPage() {
                         onClick={() => togglePick(a.id)}
                         className={cn(
                           "w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-left transition-colors",
-                          checked ? "bg-amber-100 dark:bg-amber-900" : "hover:bg-muted"
+                          checked ? "bg-indigo-100 dark:bg-indigo-900" : "hover:bg-muted"
                         )}
                       >
                         <span className="text-base">{a.avatar}</span>
@@ -384,7 +389,7 @@ export default function ChatPage() {
                         </span>
                         <span className={cn(
                           "w-4 h-4 rounded-full border flex items-center justify-center shrink-0",
-                          checked ? "bg-amber-700 border-amber-700" : "border-muted-foreground/40"
+                          checked ? "bg-indigo-700 border-indigo-700" : "border-muted-foreground/40"
                         )}>
                           {checked && <Check className="w-3 h-3 text-white" />}
                         </span>
@@ -395,14 +400,14 @@ export default function ChatPage() {
               </ScrollArea>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => { setPicking(false); setPickedIds([]) }}>
-                  取消
+                  {t("common.cancel")}
                 </Button>
                 <Button
-                  className="flex-1 gap-2 bg-amber-700 hover:bg-amber-800 text-white"
+                  className="flex-1 gap-2 bg-indigo-700 hover:bg-indigo-800 text-white"
                   disabled={pickedIds.length < 2}
                   onClick={handleCreateMeeting}
                 >
-                  <Users className="w-4 h-4" />建立會議{pickedIds.length >= 2 ? `（${pickedIds.length}）` : ""}
+                  <Users className="w-4 h-4" />{t("workspace.createMeeting")}{pickedIds.length >= 2 ? `（${pickedIds.length}）` : ""}
                 </Button>
               </div>
             </div>
@@ -411,9 +416,9 @@ export default function ChatPage() {
             <div className="flex flex-col gap-3">
               <Button
                 onClick={() => { setPicking(true); setPickedIds([]) }}
-                className="w-full gap-2 bg-amber-700 hover:bg-amber-800 text-white"
+                className="w-full gap-2 bg-indigo-700 hover:bg-indigo-800 text-white"
               >
-                <Plus className="w-4 h-4" />發起新會議
+                <Plus className="w-4 h-4" />{t("workspace.newMeeting")}
               </Button>
 
               {meetings.length > 0 ? (
@@ -429,7 +434,7 @@ export default function ChatPage() {
                         >
                           <span className="flex -space-x-1.5 shrink-0">
                             {parts.slice(0, 3).map((p) => (
-                              <span key={p.id} className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900 ring-2 ring-background flex items-center justify-center text-xs">
+                              <span key={p.id} className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900 ring-2 ring-background flex items-center justify-center text-xs">
                                 {p.avatar}
                               </span>
                             ))}
@@ -441,7 +446,7 @@ export default function ChatPage() {
                           </span>
                           <span className="flex-1 truncate">{conv.title}</span>
                           <span className="text-xs text-muted-foreground shrink-0">
-                            {new Date(conv.updatedAt).toLocaleDateString("zh-TW", { month: "numeric", day: "numeric" })}
+                            {new Date(conv.updatedAt).toLocaleDateString(intlLocale, { month: "numeric", day: "numeric" })}
                           </span>
                         </button>
                       )
@@ -449,7 +454,7 @@ export default function ChatPage() {
                   </div>
                 </ScrollArea>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">還沒有會議，點上方按鈕發起</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t("workspace.noMeetings")}</p>
               )}
             </div>
           )}

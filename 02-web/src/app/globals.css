@@ -48,107 +48,105 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ─── Warm Home Light Mode ─── */
+/* ─── Indigo / Slate Light Mode — calm, professional ─── */
 :root {
-  /* Warm parchment background — like unread letters on a sunlit desk */
-  --background: oklch(0.977 0.014 83);
-  --foreground: oklch(0.185 0.042 52);
+  /* Cool near-white background with a faint slate tint */
+  --background: oklch(0.985 0.003 265);
+  --foreground: oklch(0.21 0.03 265);
 
-  --card: oklch(0.987 0.008 80);
-  --card-foreground: oklch(0.185 0.042 52);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.03 265);
 
-  --popover: oklch(0.987 0.008 80);
-  --popover-foreground: oklch(0.185 0.042 52);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.03 265);
 
-  /* Warm amber — the colour of old honey and good wood */
-  --primary: oklch(0.555 0.138 50);
-  --primary-foreground: oklch(0.988 0.008 80);
+  /* Indigo — the brand colour (matches Tailwind indigo-600/700) */
+  --primary: oklch(0.55 0.18 265);
+  --primary-foreground: oklch(0.985 0.005 265);
 
-  /* Warm beige surfaces */
-  --secondary: oklch(0.933 0.022 78);
-  --secondary-foreground: oklch(0.255 0.038 55);
+  /* Cool slate surfaces */
+  --secondary: oklch(0.955 0.008 265);
+  --secondary-foreground: oklch(0.30 0.03 265);
 
-  --muted: oklch(0.933 0.022 78);
-  --muted-foreground: oklch(0.505 0.030 58);
+  --muted: oklch(0.955 0.008 265);
+  --muted-foreground: oklch(0.52 0.025 265);
 
-  --accent: oklch(0.933 0.022 78);
-  --accent-foreground: oklch(0.255 0.038 55);
+  --accent: oklch(0.945 0.015 265);
+  --accent-foreground: oklch(0.40 0.10 265);
 
   --destructive: oklch(0.577 0.245 27.325);
 
-  /* Warm tan border */
-  --border: oklch(0.878 0.024 75);
-  --input: oklch(0.878 0.024 75);
+  /* Slate border */
+  --border: oklch(0.905 0.008 265);
+  --input: oklch(0.905 0.008 265);
 
-  /* Warm amber focus ring */
-  --ring: oklch(0.72 0.14 65);
+  /* Indigo focus ring */
+  --ring: oklch(0.62 0.15 265);
 
-  /* Slightly more rounded — feels softer and more home-like */
   --radius: 0.75rem;
 
-  /* Sidebar slightly warmer/creamier than main background */
-  --sidebar: oklch(0.962 0.020 80);
-  --sidebar-foreground: oklch(0.185 0.042 52);
-  --sidebar-primary: oklch(0.555 0.138 50);
-  --sidebar-primary-foreground: oklch(0.988 0.008 80);
-  --sidebar-accent: oklch(0.933 0.022 78);
-  --sidebar-accent-foreground: oklch(0.255 0.038 55);
-  --sidebar-border: oklch(0.878 0.024 75);
-  --sidebar-ring: oklch(0.72 0.14 65);
+  /* Sidebar slightly cooler/deeper than main background */
+  --sidebar: oklch(0.97 0.006 265);
+  --sidebar-foreground: oklch(0.21 0.03 265);
+  --sidebar-primary: oklch(0.55 0.18 265);
+  --sidebar-primary-foreground: oklch(0.985 0.005 265);
+  --sidebar-accent: oklch(0.945 0.015 265);
+  --sidebar-accent-foreground: oklch(0.40 0.10 265);
+  --sidebar-border: oklch(0.905 0.008 265);
+  --sidebar-ring: oklch(0.62 0.15 265);
 
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --chart-1: oklch(0.55 0.18 265);
+  --chart-2: oklch(0.6 0.13 200);
+  --chart-3: oklch(0.65 0.15 160);
+  --chart-4: oklch(0.62 0.2 300);
+  --chart-5: oklch(0.7 0.16 60);
 }
 
-/* ─── Warm Home Dark Mode — candlelit evening ─── */
+/* ─── Indigo / Slate Dark Mode — deep navy slate ─── */
 .dark {
-  /* Deep warm brown — like an old reading room at night */
-  --background: oklch(0.148 0.028 52);
-  --foreground: oklch(0.948 0.016 78);
+  /* Deep cool slate, faint indigo cast */
+  --background: oklch(0.19 0.025 265);
+  --foreground: oklch(0.96 0.006 265);
 
-  --card: oklch(0.195 0.026 52);
-  --card-foreground: oklch(0.948 0.016 78);
+  --card: oklch(0.235 0.025 265);
+  --card-foreground: oklch(0.96 0.006 265);
 
-  --popover: oklch(0.195 0.026 52);
-  --popover-foreground: oklch(0.948 0.016 78);
+  --popover: oklch(0.235 0.025 265);
+  --popover-foreground: oklch(0.96 0.006 265);
 
-  /* Brighter amber for dark mode readability */
-  --primary: oklch(0.72 0.14 62);
-  --primary-foreground: oklch(0.148 0.028 52);
+  /* Brighter indigo for dark-mode readability */
+  --primary: oklch(0.68 0.16 268);
+  --primary-foreground: oklch(0.16 0.03 265);
 
-  --secondary: oklch(0.268 0.023 52);
-  --secondary-foreground: oklch(0.948 0.016 78);
+  --secondary: oklch(0.30 0.03 265);
+  --secondary-foreground: oklch(0.96 0.006 265);
 
-  --muted: oklch(0.268 0.023 52);
-  --muted-foreground: oklch(0.672 0.020 70);
+  --muted: oklch(0.30 0.03 265);
+  --muted-foreground: oklch(0.70 0.02 265);
 
-  --accent: oklch(0.268 0.023 52);
-  --accent-foreground: oklch(0.948 0.016 78);
+  --accent: oklch(0.32 0.04 265);
+  --accent-foreground: oklch(0.96 0.006 265);
 
   --destructive: oklch(0.704 0.191 22.216);
 
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.68 0.12 60);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.62 0.14 268);
 
-  /* Sidebar: slightly darker, like a wooden panelled wall */
-  --sidebar: oklch(0.182 0.030 50);
-  --sidebar-foreground: oklch(0.948 0.016 78);
-  --sidebar-primary: oklch(0.72 0.14 62);
-  --sidebar-primary-foreground: oklch(0.148 0.028 52);
-  --sidebar-accent: oklch(0.268 0.023 52);
-  --sidebar-accent-foreground: oklch(0.948 0.016 78);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.68 0.12 60);
+  --sidebar: oklch(0.225 0.027 265);
+  --sidebar-foreground: oklch(0.96 0.006 265);
+  --sidebar-primary: oklch(0.68 0.16 268);
+  --sidebar-primary-foreground: oklch(0.16 0.03 265);
+  --sidebar-accent: oklch(0.32 0.04 265);
+  --sidebar-accent-foreground: oklch(0.96 0.006 265);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.62 0.14 268);
 
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
+  --chart-1: oklch(0.68 0.16 268);
+  --chart-2: oklch(0.7 0.13 200);
+  --chart-3: oklch(0.72 0.15 160);
+  --chart-4: oklch(0.7 0.2 300);
+  --chart-5: oklch(0.75 0.16 60);
 }
 
 @layer base {
